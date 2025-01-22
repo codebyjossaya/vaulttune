@@ -1,0 +1,32 @@
+{
+  "name": "vt_server",
+  "version": "1.0.0",
+  "description": "The local server for VaultTune, your personal self-hosted music platform.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcamille2023/vt_server.git"
+  },
+  "keywords": [
+    "VaultTune"
+  ],
+  "author": "Jossaya Camille",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jcamille2023/vt_server/issues"
+  },
+  "homepage": "https://github.com/jcamille2023/vt_server#readme",
+  "dependencies": {
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "typescript": "^5.7.3"
+  }
+}
