@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+" crossorigin="anonymous"></script>
+    </head>
+    <body>
+        <h1>Socket.IO test page</h1>
+        <p>Test your socket.io server in the console on this page!</p>
+
+        <script>
+            const socket = io("http://localhost:3000/"); // Change port if needed
+
+            socket.on("connect", () => {
+                console.log("Connected to server!");
+            });
+
+            socket.on("connect_error", (err) => {
+            console.error("Connection error:", err);
+            });
+        </script>
+    </body>
+</html>
