@@ -8,7 +8,9 @@ function handleJoinRoom(t, socket, id) {
         room.addMember(socket);
         t.io.to(room.id).emit("new device", "Device ".concat(socket.id, " is joining this room"));
         socket.emit("status", "Joined room " + room.name);
-        socket.emit("songs", room.songs);
+        socket.emit("songs", room.songs.map(function (song) {
+            return song.exportSong();
+        }));
         socket.emit("playlists", room.playlists);
     }
     else {

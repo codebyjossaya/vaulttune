@@ -23,7 +23,7 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     const buf = song!.getBuffer();
     let offset = 0;
     const chunkSize = (buf.byteLength / song.metadata.format.duration) * 5
-    socket.emit("song data start",song)
+    socket.emit("song data start",song.exportSong())
 
     const sendSongData = () => {
         while(offset < buf.byteLength) {

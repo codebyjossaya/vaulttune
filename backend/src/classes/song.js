@@ -50,7 +50,7 @@ var Song = /** @class */ (function () {
         var date = new Date();
         var timestamp = date.toISOString();
         var random = Math.floor(Math.random() * 1000000);
-        this.id = (id === undefined) ? "room_".concat(timestamp, "_").concat(random) : id;
+        this.id = (id === undefined) ? "song_".concat(timestamp, "_").concat(random) : id;
     }
     Song.create = function (status, blob, options) {
         return __awaiter(this, void 0, void 0, function () {

@@ -21,7 +21,7 @@ function handlePlaySong(t, socket, room_id, song_id) {
     var buf = song.getBuffer();
     var offset = 0;
     var chunkSize = (buf.byteLength / song.metadata.format.duration) * 5;
-    socket.emit("song data start", song);
+    socket.emit("song data start", song.exportSong());
     var sendSongData = function () {
         while (offset < buf.byteLength) {
             socket.emit("song data", buf.slice(offset, offset + chunkSize));

@@ -12,11 +12,13 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "http2": "^3.3.6",
+    "lucide-react": "^0.477.0",
     "music-metadata": "^11.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "5.0.1",
     "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "typescript": "^5.8.2",
     "web-vitals": "^2.1.4"
   },
