@@ -36,9 +36,15 @@ export class Room {
     }
     async addSongDir(path: string): Promise<{ success: boolean; error?: string }> {
         try {
+            const allowedExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma'];
+            console.log(`Adding songs in ${path}`)
             this.dirs.push(path)
             const songs = readdirSync(path);
-            for(const song of songs) this.songs.push(await Song.create(SongStatus.SYSTEM, null, {path: song}));
+            console.log(`Songs: ${songs}`)
+            for(const song of songs) {
+                if (!allowedExtensions.some(ext => song.toLowerCase().endsWith(ext))) continue;
+                this.songs.push(await Song.create(SongStatus.SYSTEM, null, {path: path + "/" +song}));
+            }
             return {success: true, error: undefined};
         } catch(error) {
             return {success: false, error: error};

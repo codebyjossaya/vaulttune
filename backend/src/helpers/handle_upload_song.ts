@@ -3,7 +3,7 @@ import { Server } from "../classes/server";
 import { Room } from "../classes/room";
 import { Song } from "../classes/song";
 import { SongStatus } from "../types";
-export async function handleUploadSong(t: Server, socket: Socket, room_id: string, blob: Blob) {
+export async function handleUploadSong(t: Server, socket: Socket, room_id: string, buf: ArrayBuffer) {
     const room: Room | undefined = t.rooms.find((element) => element.id === room_id);
     if (room === undefined) {
         socket.emit("error","Room not found");
@@ -17,6 +17,7 @@ export async function handleUploadSong(t: Server, socket: Socket, room_id: strin
     let path: string;
     if (room.dirs.length < 1) path = `${__dirname}/../../songs/`;
     else path = room.dirs[0]
+    const blob = new Blob([buf])
     const song = await Song.create(SongStatus.UPLOADED,blob,{path: path})
     room.songs.push(song)
     socket.emit("status","Song successfully uploaded")

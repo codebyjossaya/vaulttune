@@ -39,9 +39,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleUploadSong = handleUploadSong;
 var song_1 = require("../classes/song");
 var types_1 = require("../types");
-function handleUploadSong(t, socket, room_id, blob) {
+function handleUploadSong(t, socket, room_id, buf) {
     return __awaiter(this, void 0, void 0, function () {
-        var room, members, path, song;
+        var room, members, path, blob, song;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -59,6 +59,7 @@ function handleUploadSong(t, socket, room_id, blob) {
                         path = "".concat(__dirname, "/../../songs/");
                     else
                         path = room.dirs[0];
+                    blob = new Blob([buf]);
                     return [4 /*yield*/, song_1.Song.create(types_1.SongStatus.UPLOADED, blob, { path: path })];
                 case 1:
                     song = _a.sent();

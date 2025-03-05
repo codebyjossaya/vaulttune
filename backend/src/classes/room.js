@@ -71,29 +71,47 @@ var Room = /** @class */ (function () {
     };
     Room.prototype.addSongDir = function (path) {
         return __awaiter(this, void 0, void 0, function () {
-            var songs, _i, songs_1, song, _a, _b, error_1;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
+            var allowedExtensions, songs, _loop_1, this_1, _i, songs_1, song, error_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
-                        _c.trys.push([0, 5, , 6]);
+                        _a.trys.push([0, 5, , 6]);
+                        allowedExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma'];
+                        console.log("Adding songs in ".concat(path));
                         this.dirs.push(path);
                         songs = (0, fs_1.readdirSync)(path);
+                        console.log("Songs: ".concat(songs));
+                        _loop_1 = function (song) {
+                            var _b, _c;
+                            return __generator(this, function (_d) {
+                                switch (_d.label) {
+                                    case 0:
+                                        if (!allowedExtensions.some(function (ext) { return song.toLowerCase().endsWith(ext); }))
+                                            return [2 /*return*/, "continue"];
+                                        _c = (_b = this_1.songs).push;
+                                        return [4 /*yield*/, song_1.Song.create(types_1.SongStatus.SYSTEM, null, { path: path + "/" + song })];
+                                    case 1:
+                                        _c.apply(_b, [_d.sent()]);
+                                        return [2 /*return*/];
+                                }
+                            });
+                        };
+                        this_1 = this;
                         _i = 0, songs_1 = songs;
-                        _c.label = 1;
+                        _a.label = 1;
                     case 1:
                         if (!(_i < songs_1.length)) return [3 /*break*/, 4];
                         song = songs_1[_i];
-                        _b = (_a = this.songs).push;
-                        return [4 /*yield*/, song_1.Song.create(types_1.SongStatus.SYSTEM, null, { path: song })];
+                        return [5 /*yield**/, _loop_1(song)];
                     case 2:
-                        _b.apply(_a, [_c.sent()]);
-                        _c.label = 3;
+                        _a.sent();
+                        _a.label = 3;
                     case 3:
                         _i++;
                         return [3 /*break*/, 1];
                     case 4: return [2 /*return*/, { success: true, error: undefined }];
                     case 5:
-                        error_1 = _c.sent();
+                        error_1 = _a.sent();
                         return [2 /*return*/, { success: false, error: error_1 }];
                     case 6: return [2 /*return*/];
                 }
@@ -116,7 +134,7 @@ var Room = /** @class */ (function () {
     };
     Room.readSettings = function (name) {
         return __awaiter(this, void 0, void 0, function () {
-            var data, songs, playlists, _i, _a, song, _b, _c, _d, _e, playlist, new_playlist, _loop_1, _f, _g, song;
+            var data, songs, playlists, _i, _a, song, _b, _c, _d, _e, playlist, new_playlist, _loop_2, _f, _g, song;
             return __generator(this, function (_h) {
                 switch (_h.label) {
                     case 0:
@@ -143,7 +161,7 @@ var Room = /** @class */ (function () {
                         if (!(_d < _e.length)) return [3 /*break*/, 11];
                         playlist = _e[_d];
                         new_playlist = new playlist_1.Playlist(playlist.name);
-                        _loop_1 = function (song) {
+                        _loop_2 = function (song) {
                             var existing_song, new_song;
                             return __generator(this, function (_j) {
                                 switch (_j.label) {
@@ -168,7 +186,7 @@ var Room = /** @class */ (function () {
                     case 6:
                         if (!(_f < _g.length)) return [3 /*break*/, 9];
                         song = _g[_f];
-                        return [5 /*yield**/, _loop_1(song)];
+                        return [5 /*yield**/, _loop_2(song)];
                     case 7:
                         _h.sent();
                         _h.label = 8;

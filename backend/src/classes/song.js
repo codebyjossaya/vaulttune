@@ -42,10 +42,11 @@ var fs_1 = require("fs");
 var types_1 = require("../types");
 var Song = /** @class */ (function () {
     function Song(path, metadata, buffer, id) {
-        if (id === void 0) { id = null; }
+        if (id === void 0) { id = undefined; }
         this.path = path;
         this.metadata = metadata;
         this.buffer = buffer;
+        this.size = buffer.byteLength;
         var date = new Date();
         var timestamp = date.toISOString();
         var random = Math.floor(Math.random() * 1000000);
@@ -62,7 +63,7 @@ var Song = /** @class */ (function () {
                         return [4 /*yield*/, (0, music_metadata_1.parseBuffer)(buffer)];
                     case 1:
                         metadata = _a.sent();
-                        return [2 /*return*/, new Song(options.path, metadata.common, buffer)];
+                        return [2 /*return*/, new Song(options.path, metadata, buffer)];
                     case 2:
                         if (!(status === types_1.SongStatus.UPLOADED)) return [3 /*break*/, 5];
                         if (!(blob instanceof Blob))
@@ -73,8 +74,8 @@ var Song = /** @class */ (function () {
                         return [4 /*yield*/, blob.arrayBuffer()];
                     case 4:
                         buffer = _a.sent();
-                        (0, fs_1.writeFileSync)(options.path, new DataView(buffer));
-                        return [2 /*return*/, new Song(options.path, metadata.common, buffer)];
+                        (0, fs_1.writeFileSync)("".concat(options.path, "/").concat(metadata.common.title, ".").concat(metadata.format.container), new DataView(buffer));
+                        return [2 /*return*/, new Song("".concat(options.path, "/").concat(metadata.common.title, ".").concat(metadata.format.container), metadata, buffer)];
                     case 5: throw new Error('Invalid status');
                 }
             });
@@ -85,7 +86,6 @@ var Song = /** @class */ (function () {
     };
     Song.prototype.exportSong = function () {
         return {
-            path: this.path,
             metadata: this.metadata,
             id: this.id,
         };

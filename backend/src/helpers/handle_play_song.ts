@@ -4,6 +4,7 @@ import { Server } from "../classes/server";
 import { Song } from "../classes/song";
 
 export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_id: string) {
+    console.log(`Device ${socket.id} is requesting song ${song_id} from room ${room_id}`)
     const room: Room | undefined = t.rooms.find((element) => element.id === room_id);
     if (room === undefined) {
         socket.emit("error","Room not found");
@@ -18,8 +19,24 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     if (song === undefined) {
         socket.emit("error","This song does not exist");
     }
-    socket.emit("song info", song);
-    socket.emit("song data", song!.getBuffer());
+    // add in compression
+    const buf = song!.getBuffer();
+    let offset = 0;
+    const chunkSize = (buf.byteLength / song.metadata.format.duration) * 5
+    socket.emit("song data start",song)
+
+    const sendSongData = () => {
+        while(offset < buf.byteLength) {
+            socket.emit("song data", buf.slice(offset, offset + chunkSize));
+            offset += chunkSize
+        }
+        console.log("Finished sending song data")
+        socket.emit("song data end")
+        socket.off('song data ready',sendSongData)
+    }
+    socket.on('song data ready', sendSongData)
+    
+    
 }
 
 
