@@ -8,7 +8,7 @@ import {sign, verify, JwtPayload} from "jsonwebtoken";
 import { readFileSync } from "node:fs";
 
 const verifyServer = (req: e.Request) => {
-    const verified = verify(req.body.token, readFileSync("./public.jey", "utf-8"), { algorithms: ["RS256"] });
+    const verified = verify(req.body.token, readFileSync("./public.key", "utf-8"), { algorithms: ["RS256"] });
     if (typeof verified === 'string') {
         return JSON.parse(verified);
     } else if (typeof verified === 'object') {
@@ -18,11 +18,12 @@ const verifyServer = (req: e.Request) => {
 }
 
 export class Server {
-    private app: express.Application = express();
+    private app: e.Application = express();
     private port = 3000;
     public firebase;
     public auth: Auth;
     public database: Database;
+    public server;
         constructor() {
             this.firebase = initializeApp({
                 credential: credential.cert("./vaulttunemusic_key.json"),
@@ -64,8 +65,11 @@ export class Server {
             })
         }
     start(): void {
-        this.app.listen(this.port, () => {
+        this.server = this.app.listen(this.port, () => {
             console.log(`Listening on port ${this.port}`)
         })
+    }
+    close(): void {
+        this.server.close()
     }
 }

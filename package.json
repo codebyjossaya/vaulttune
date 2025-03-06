@@ -1,32 +1,31 @@
 {
-  "name": "vt_server",
-  "version": "1.0.0",
-  "description": "The local server for VaultTune, your personal self-hosted music platform.",
-  "main": "main.js",
+  "name": "vaulttune",
+  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jcamille2023/vt_server.git"
-  },
-  "keywords": [
-    "VaultTune"
-  ],
-  "author": "Jossaya Camille",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/jcamille2023/vt_server/issues"
-  },
-  "homepage": "https://github.com/jcamille2023/vt_server#readme",
   "dependencies": {
-    "express": "^4.21.2",
-    "firebase-admin": "^13.0.2",
-    "jsonwebtoken": "^9.0.2"
+    "lucide-react": "^0.477.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
-    "typescript": "^5.7.3"
+    "@eslint/js": "^9.21.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react-swc": "^3.8.0",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.2.0"
   }
 }
