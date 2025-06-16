@@ -1,9 +1,9 @@
-import { Server } from "./backend/src/classes/server";
+import Server from "./backend/src/classes/server";
 
 
 async function main() {
-	const server = new Server()
-	await server.createRoom("music", "C:/Users/MaxGa/Music")
+	const server = new Server({})
+	const music_room = await server.createRoom("music", "C:/Users/MaxGa/Music")
 	server.start()
 }
 

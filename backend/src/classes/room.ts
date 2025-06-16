@@ -1,10 +1,12 @@
 import { Socket } from "socket.io";
-import { Song } from "./song";
-import { Playlist } from "./playlist";
+import Song from "./song";
+import Playlist from "./playlist";
 import { readdirSync, readFileSync, writeFileSync } from "fs";
-import { SongStatus } from "../types";
+import { SongStatus } from "../interfaces/types";
+import {watch} from 'chokidar'
+import { basename } from "path";
 
-export class Room {
+export default class Room {
     public id: string;
     public name: string;
     public members: Socket[];
@@ -23,7 +25,7 @@ export class Room {
         const random = Math.floor(Math.random() * 1000000);
         this.id = (id === undefined) ? `room_${timestamp}_${random}` : id;
     }
-    addMember(socket: Socket) {
+    addMember(socket: Socket): void {
         socket.join(this.id);
         this.members.push(socket);
     }
@@ -39,12 +41,27 @@ export class Room {
             const allowedExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma'];
             console.log(`Adding songs in ${path}`)
             this.dirs.push(path)
-            const songs = readdirSync(path);
-            console.log(`Songs: ${songs}`)
-            for(const song of songs) {
-                if (!allowedExtensions.some(ext => song.toLowerCase().endsWith(ext))) continue;
-                this.songs.push(await Song.create(SongStatus.SYSTEM, null, {path: path + "/" +song}));
-            }
+
+            // begin watching the folder for new changes
+            const watcher = watch(path, {persistent: true})
+            watcher.on('add', async (filePath: string) => {
+                const song_name = basename(filePath)
+                if (!allowedExtensions.some(ext => song_name.toLowerCase().endsWith(ext))) return;
+                else if (song_name.includes("UPLOADED")) return;
+                this.songs.push(await Song.create(SongStatus.SYSTEM, null, {path: filePath}));
+                
+                for (const socket of this.members) {
+                    socket.emit("songs", this.exportSongs())
+                }
+            }) 
+            watcher.on('unlink', (path) => {
+                console.log("a song was removed");
+                this.songs = this.songs.filter(song => song.path !== path);
+                for (const socket of this.members) {
+                    socket.emit("songs", this.exportSongs())
+                }
+                
+            }) 
             return {success: true, error: undefined};
         } catch(error) {
             return {success: false, error: error};
@@ -91,5 +108,8 @@ export class Room {
             playlists
         );
         
+    }
+    exportSongs() {
+        return this.songs.map((song) => song.exportSong())
     }
 }

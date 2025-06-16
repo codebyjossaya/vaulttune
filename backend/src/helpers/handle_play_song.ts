@@ -1,9 +1,10 @@
 import { Socket } from "socket.io";
-import { Room } from "../classes/room";
-import { Server } from "../classes/server";
-import { Song } from "../classes/song";
+import Room from "../classes/room";
+import Server from "../classes/server";
+import Song from "../classes/song";
 
 export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_id: string) {
+    
     console.log(`Device ${socket.id} is requesting song ${song_id} from room ${room_id}`)
     const room: Room | undefined = t.rooms.find((element) => element.id === room_id);
     if (room === undefined) {
@@ -23,6 +24,7 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     const buf = song!.getBuffer();
     let offset = 0;
     const chunkSize = (buf.byteLength / song.metadata.format.duration) * 5
+    socket.emit("status","playing song")
     socket.emit("song data start",song.exportSong())
 
     const sendSongData = () => {
@@ -34,7 +36,8 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
         socket.emit("song data end")
         socket.off('song data ready',sendSongData)
     }
-    socket.on('song data ready', sendSongData)
+    socket.removeAllListeners('song data ready');
+    socket.on('song data ready', sendSongData);
     
     
 }

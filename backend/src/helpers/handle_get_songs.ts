@@ -1,6 +1,6 @@
 import { Socket } from "socket.io";
-import { Server } from "../classes/server";
-import { Room } from "../classes/room";
+import Server from "../classes/server";
+import Room from "../classes/room";
 
 export function handleGetSongs(t: Server, socket: Socket, room_id: string) {
     console.log(`Device ${socket.id} requested list of songs from room id ${room_id}`)
