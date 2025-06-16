@@ -4,7 +4,7 @@ interface LoadingProps {
 }
 export function Loading({text}: LoadingProps) {
     return (
-        <div className="loading-container">
+        <div className="loading-container card-container">
             <div className="spinner"></div>
             <p className="loading-text">{text}</p>
             <style>{`

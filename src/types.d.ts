@@ -1,8 +1,9 @@
-import { IAudioMetadata } from "music-metadata/lib";
+import { IAudioMetadata, IPicture } from "music-metadata/lib";
 export interface Song {
     metadata: IAudioMetadata;
     id: string;
     size: number;
+    artist_str: string;
 }
 
 export interface Room {
@@ -12,5 +13,13 @@ export interface Room {
 
 export interface Playlist {
     songs: Song[],
-    name: string
+    name: string,
+    album_cover: IPicture,
+    id: string,
+}
+
+
+export interface SongChunk {
+    buffer: ArrayBuffer,
+    chunk_counter: number
 }
