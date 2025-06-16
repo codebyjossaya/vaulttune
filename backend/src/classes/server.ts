@@ -12,6 +12,9 @@ import { handleiOSPlaySong } from "../helpers/handle_play_song_ios";
 import express, {Express} from 'express';
 import { getTunnelAddr } from "../helpers/getTunnelAddr";
 import { ChildProcessWithoutNullStreams } from "child_process";
+import { handleCreatePlaylist } from "../helpers/handleCreatePlaylist";
+import { handleGetPlaylists } from "../helpers/handle_get_playlists";
+import { handleExportRoom } from "../helpers/handle_export_room";
 
 export default class Server {
     public io: SocketServer;
@@ -41,32 +44,40 @@ export default class Server {
             console.log(`Device ${socket.id} has connected to the server`)
             socket.emit("status","Connection recieved");
             socket.on('get rooms', () => socket.emit("available rooms",this.getRooms()));
-            socket.on('leave room', (room_id) => {handleLeaveRoom(this,socket,room_id)})
+            socket.on('leave room', (room_id) => {handleLeaveRoom(this,socket,room_id)});
             // handlers
             socket.on('join room',(id: string) => (handleJoinRoom(this,socket, id)));
-            socket.on('play song', (room_id: string, song_id: string) => { handlePlaySong(this, socket, room_id, song_id)})
+            socket.on('play song', (room_id: string, song_id: string) => { handlePlaySong(this, socket, room_id, song_id)});
             // add a cancel play song listener
-            socket.on('play song - iOS', (room_id: string, song_id: string) => handleiOSPlaySong(this, socket, room_id, song_id))
-            socket.on('upload song', (room_id: string, buf: ArrayBuffer) => {handleUploadSong(this,socket,room_id,buf)})
-            socket.on('get songs', (room_id: string) => {handleGetSongs(this,socket,room_id)})
-            socket.on('disconnect', () => {handleDisconnect(this,socket)})
+            socket.on('play song - iOS', (room_id: string, song_id: string) => handleiOSPlaySong(this, socket, room_id, song_id));
+            socket.on('upload song', (room_id: string, buf: ArrayBuffer) => {handleUploadSong(this,socket,room_id,buf)});
+            socket.on('get songs', (room_id: string) => {handleGetSongs(this,socket,room_id)});
+            socket.on('get playlists', (room_id: string) => {handleGetPlaylists(this,socket,room_id)});
+            socket.on('create playlist', (room_id: string, name: string, song_ids: string[]) => handleCreatePlaylist(this,socket,room_id,name,song_ids));
+            socket.on('disconnect', () => {handleDisconnect(this,socket)});
+            socket.on('export room', (room_id: string) => {handleExportRoom(this, socket, room_id)});
         });
     }
     async createRoom(name: string, song_dir: string): Promise<Room> {
-        console.log(`Creating room ${name}`)
-        const room = new Room(name)
-        const status = await room.addSongDir(song_dir)
-        if(!status.success) console.error(`Error adding song directory to room. Room will still be created.\nError:${status.error}`)
-        this.rooms.push(room)
+        console.log(`Creating room ${name}`);
+        const room = new Room(name);
+        const status = await room.addSongDir(song_dir);
+        if(!status.success) console.error(`Error adding song directory to room. Room will still be created.\nError:${status.error}`);
+        this.rooms.push(room);
         return room;
     }
+    attachRoom (room: Room): void {
+        console.log(`Attaching room ${room.name} to the server`);
+        this.rooms.push(room);
+    }
+
     async start() {
         
         console.log("VaultTune server running on port 3000");
-        this.httpServer.listen(3000)
+        this.httpServer.listen(3000);
         if(this.network) {
-            this.address = await getTunnelAddr(this)
-            console.log("This Vault's address: ", this.address);
+            // this.address = await getTunnelAddr(this)
+            // console.log("This Vault's address: ", this.address);
         }
         
         
@@ -76,7 +87,7 @@ export default class Server {
         this.io.close();
         this.httpServer.close();
         this.serveo.kill();
-        console.log("VaultTune server has stopped running")
+        console.log("VaultTune server has stopped running");
     }
     getRooms() {
         return this.rooms.map(room => {
@@ -84,7 +95,7 @@ export default class Server {
                 name: room.name,
                 id: room.id,
             }
-        })
+        });
     }
 
 }

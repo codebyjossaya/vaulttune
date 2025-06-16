@@ -20,7 +20,7 @@ export async function handleUploadSong(t: Server, socket: Socket, room_id: strin
     else path = room.dirs[0]
     const blob = new Blob([buf])
     const song = await Song.create(SongStatus.UPLOADED,blob,{path: path})
-    room.songs.push(song)
+
     console.log("Song successfully uploaded! Song id:", song.id)
     socket.emit("status","Song successfully uploaded")
     socket.emit("songs", room.exportSongs())

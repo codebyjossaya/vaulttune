@@ -1,7 +1,8 @@
 import {IAudioMetadata, parseBlob, parseBuffer } from 'music-metadata'
 import { readFileSync, writeFileSync } from 'fs'
 import { Options, SongStatus } from '../interfaces/types'
-
+import { SongError } from '../interfaces/errors';
+import { existsSync } from 'fs';
 export default class Song {
     public path;
     public metadata: IAudioMetadata;
@@ -20,17 +21,47 @@ export default class Song {
     }
 
     static async create(status: SongStatus, blob: Blob | null, options: Options): Promise<Song> {
-        if(status === SongStatus.SYSTEM) {
-            const buffer = readFileSync(options.path!);
-            const metadata = await parseBuffer(buffer);
-            return new Song(
-                options.path!,
-                metadata,
-                buffer
-            );
+        if (status === SongStatus.SYSTEM) {
+            // Check if the file exists at the given path
+            if (!existsSync(options.path!)) {
+                throw new SongError(`Song file does not exist at path: ${options.path}`);
+            }
+            try {
+                const buffer = readFileSync(options.path!);
+                const metadata = await parseBuffer(buffer);
+                if (
+                !metadata ||
+                !metadata.common ||
+                Object.keys(metadata.common).length === 0 ||
+                !metadata.format ||
+                Object.keys(metadata.format).length === 0
+                ) {
+                    throw new Error("No metadata found in the uploaded song");
+                }
+                return new Song(
+                    options.path!,
+                    metadata,
+                    buffer,
+                    options.id
+                );
+            } catch (error) {
+                throw new SongError(`Cannot read song: ${(error instanceof Error) ? error.message : String(error)}`)
+            }
+            
+            
         } else if (status === SongStatus.UPLOADED) {
             if (!(blob instanceof Blob)) throw new Error("No blob provided")
-            const metadata = await parseBlob(blob!)
+            const metadata = await parseBlob(blob!);
+            // Throw error if metadata is missing or has no common tags or format info
+            if (
+                !metadata ||
+                !metadata.common ||
+                Object.keys(metadata.common).length === 0 ||
+                !metadata.format ||
+                Object.keys(metadata.format).length === 0
+            ) {
+                throw new SongError("No metadata found in the uploaded song");
+            }
             const buffer = await blob.arrayBuffer()
             const title = metadata.common.title|| 'Unknown_Title_UPLOADED'; // Default title if none exists
             const sanitizedTitle = title.replace(/[\\/:*?"<>|]/g, '_'); // Replace invalid filename characters
@@ -59,6 +90,7 @@ export default class Song {
         return {
             metadata: this.metadata,
             id: this.id,
+            path: this.path
         }
     }
 }

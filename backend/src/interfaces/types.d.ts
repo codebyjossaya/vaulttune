@@ -6,5 +6,8 @@ export enum SongStatus {
 
 export class Options {
     public path: string | undefined;
+    public id?: string;
 }
+
+
 

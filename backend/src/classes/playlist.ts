@@ -12,6 +12,7 @@ export default class Playlist {
         const timestamp: string = date.toISOString();
         const random = Math.floor(Math.random() * 1000000);
         this.id = `playlist_${timestamp}_${random}`;
+        this.songs = [];
     }
     addSong(song: Song) {
         if(this.songs.length == 0) this.album_cover = song.metadata.common.picture[0]    
