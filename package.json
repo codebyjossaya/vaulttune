@@ -1,0 +1,28 @@
+{
+  "name": "vt_backend",
+  "version": "1.0.0",
+  "description": "VaultTune's backend server for most non-Vault features, including Cloud Sync and VaultShare.",
+  "main": "main.js",
+  "scripts": {
+    "test": "node ./main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codebyjossaya/vt_backend.git"
+  },
+  "author": "Jossaya Camille",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/codebyjossaya/vt_backend/issues"
+  },
+  "homepage": "https://github.com/codebyjossaya/vt_backend#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19"
+  }
+}

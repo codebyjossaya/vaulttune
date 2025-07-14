@@ -1,0 +1,12 @@
+node_modules/
+dist/
+# Logs
+logs
+npm-debug.log*
+# Runtime data
+pids
+
+vaulttunemusic_key.json
+
+private.key
+public.key
