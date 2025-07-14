@@ -23,27 +23,39 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     // add in compression
     const buf = song!.getBuffer();
 
-
+    t.rpc.setActivity({
+        // @ts-expect-error
+        type: 2,
+        details: `Playing ${song.metadata.common.title}`,
+        state: `by ${song.metadata.common.artist}`,
+        startTimestamp: new Date(),
+        instance: false,
+    })
     let chunkSize = (buf.byteLength / song.metadata.format.duration) * 5
     let total_chunks = Math.ceil(buf.byteLength / chunkSize);
     let timeoutId: NodeJS.Timeout | null = null;
     console.log(`Song: ${song.metadata.common.title} by ${song.metadata.common.artist} with a chunk size of ${chunkSize} and bytelength of ${buf.byteLength} making ${total_chunks} total chunks`)
+    console.log("Exporting song data");
+    const data = song.exportSong();
     socket.emit("status","playing song")
-    socket.emit("song data start",song.exportSong(),total_chunks)
+    console.log(`Sending song data start event for song ${song_id} to device ${socket.id}`);
+    socket.emit("song data start",data,total_chunks)
     socket.on('stop song', (id: string) => {
+        console.log(`Device ${socket.id} has requested to stop song ${song_id}`);
         if (id === song_id) {
             console.log(`Device ${socket.id} has stopped song ${song_id}`);
             clearTimeout(timeoutId);
             isCancelled = true;
             socket.emit("status","stopped song");
             socket.off(`song data ready ${song_id}`, sendSongData);
+            socket.removeAllListeners(`stop song`);
         }
     });
 
     let isCancelled = false;
 
     const sendSongData = () => {
-        socket.off(`song data ready ${song_id}`, sendSongData);
+        socket.removeAllListeners(`song data ready ${song_id}`);
         let offset = 0;
         let chunk_counter = 0;
         console.log(`Device ${socket.id} is ready to receive song data for ${song_id}`);
@@ -57,6 +69,7 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
                 socket.emit(`song data ${song_id}`, {buffer: chunk, chunk_counter});
                 offset += chunkSize;
                 chunk_counter += 1;
+                console.log(`Sending chunk ${chunk_counter} out of ${total_chunks} of song ${song_id}`);
                 timeoutId = setTimeout(sendChunk, 0); // Use setTimeout to avoid blocking the event loop
             } else {
                 console.log("Finished sending song data");
@@ -69,6 +82,7 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     };
 
     // Add new listeners
+    console.log(`Waiting for device ${socket.id} to be ready to receive song data for song ${song_id}`);
     socket.on(`song data ready ${song_id}`, sendSongData);
 
 

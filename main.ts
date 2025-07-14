@@ -5,8 +5,7 @@ const readline = require("readline-sync");
 
 
 async function main() {
-	const server = new Server({});
-	const music_room = await server.createRoom("music on portable", "F:/music");
+	const server = new Server({name: "Jossaya's Vault", network: true});
 
 	
 	const files = readdirSync(`${__dirname}/backend/settings/rooms`);

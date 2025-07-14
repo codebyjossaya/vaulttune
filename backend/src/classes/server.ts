@@ -3,7 +3,7 @@ import Room from "./room";
 import { handleUploadSong } from "../helpers/handle_upload_song";
 import { handleJoinRoom } from "../helpers/handle_join_room";
 import { handlePlaySong } from "../helpers/handle_play_song";
-import { Options } from "../interfaces/types";
+import { Options, ServerOptions } from "../interfaces/types";
 import { handleGetSongs } from "../helpers/handle_get_songs";
 import { createServer, Server as httpServer } from "http";
 import { handleDisconnect } from "../helpers/handle_disconnect";
@@ -15,20 +15,33 @@ import { ChildProcessWithoutNullStreams } from "child_process";
 import { handleCreatePlaylist } from "../helpers/handleCreatePlaylist";
 import { handleGetPlaylists } from "../helpers/handle_get_playlists";
 import { handleExportRoom } from "../helpers/handle_export_room";
+import { Client } from "discord-rpc";
+import { initializeRPC } from "../helpers/discordRichPresence";
+import { auth } from "../helpers/vtAuth";
+import { registerVault } from "../helpers/registerVault";
+import cors from 'cors';
+import type * as localtunnel from "localtunnel";
+import updateVaultStatus from "../helpers/updateVaultStatus";
 
 export default class Server {
     public io: SocketServer;
     public app: Express;
     public httpServer: httpServer;
     public rooms: Room[] = [];
-    public serveo: ChildProcessWithoutNullStreams;
-    public options: Options;
+    public tunnel: localtunnel.Tunnel | undefined;
+    public options: ServerOptions;
     public address: string;
-    public network: boolean | undefined;
-    constructor({ network = true }: { network?: boolean } = {}) {
-        this.network = network
-        this.app = express()
-        this.httpServer = createServer(this.app)
+    public rpc: Client | undefined;
+
+    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault'}) {
+        this.options = options;
+        this.app = express();
+        this.app.use(cors({
+            origin: '*', // NOTE: Use specific origins in production!
+            methods: ['GET', 'POST'],
+            allowedHeaders: ['Content-Type']
+        }))
+        this.httpServer = createServer(this.app);
 
         this.io = new SocketServer(this.httpServer, {
             cors: {
@@ -57,13 +70,29 @@ export default class Server {
             socket.on('disconnect', () => {handleDisconnect(this,socket)});
             socket.on('export room', (room_id: string) => {handleExportRoom(this, socket, room_id)});
         });
+
+        process.on('SIGINT', async () => {
+            console.log("SIGINT received. Stopping VaultTune server...");
+            await this.stop();
+            process.exit(0);
+        });
+        process.on('SIGTERM', async () => {
+            console.log("SIGTERM received. Stopping VaultTune server...");
+            await this.stop();
+            process.exit(0);
+        });
+        process.on('uncaughtException', (error) => {
+            console.error("Uncaught Exception: ", error);
+            console.log("Stopping VaultTune server...");
+            this.stop(true).then(() => process.exit(1));
+        });
     }
     async createRoom(name: string, song_dir: string): Promise<Room> {
         console.log(`Creating room ${name}`);
         const room = new Room(name);
         const status = await room.addSongDir(song_dir);
         if(!status.success) console.error(`Error adding song directory to room. Room will still be created.\nError:${status.error}`);
-        this.rooms.push(room);
+        this.rooms.push(room);  
         return room;
     }
     attachRoom (room: Room): void {
@@ -72,21 +101,34 @@ export default class Server {
     }
 
     async start() {
-        
-        console.log("VaultTune server running on port 3000");
+
+        console.log("Starting Vault...");
+        console.log("Vault server running on port 3000");
         this.httpServer.listen(3000);
-        if(this.network) {
-            // this.address = await getTunnelAddr(this)
-            // console.log("This Vault's address: ", this.address);
+        console.log("Authenticating with Vault servers...");
+        await auth(this);
+        console.log("Obtaining tunnel address...");
+        if(this.options.network) {
+            this.address = await getTunnelAddr(this)
+            console.log("This Vault's address: ", this.address);
         }
+        console.log("Registering this Vault with VaultTune servers...");
+        await registerVault(this);
+        console.log("Appearing online on VaultTune servers...");
+        await updateVaultStatus(this,"online");
+
+        console.log("Initializing Discord Rich Presence");
+        this.rpc = initializeRPC();
         
         
     }
     
-    stop() {
+    async stop(error: boolean = false) {
+        console.log("Stopping VaultTune server...");
+        await updateVaultStatus(this, error ? "error" : "offline");
         this.io.close();
         this.httpServer.close();
-        this.serveo.kill();
+        this.tunnel ? this.tunnel.close() : null;
         console.log("VaultTune server has stopped running");
     }
     getRooms() {
