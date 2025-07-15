@@ -27,7 +27,7 @@ export class Server {
     public server: any;
         constructor() {
             this.firebase = admin.initializeApp({
-                credential: admin.credential.cert(process.env.FIREBASE_KEY!),
+                credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY!)),
                 databaseURL: "https://vaulttunemusic-default-rtdb.firebaseio.com"
             });
             this.auth = getAuth(this.firebase);
