@@ -9,7 +9,8 @@ import cors from 'cors';
 const { sign, verify } = pkg;
 
 const verifyServer = (token: string): serverToken => {
-    const verified = verify(token, process.env.PUBLIC_SERVER_KEY!, { algorithms: ["RS256"] });
+    const publicKey = process.env.PUBLIC_SERVER_KEY!.replace(/\\n/g, '\n');
+    const verified = verify(token, publicKey, { algorithms: ["RS256"] });
     if (typeof verified === 'string') {
         return JSON.parse(verified) as serverToken;
     } else if (typeof verified === 'object') {
@@ -57,7 +58,8 @@ export class Server {
                         id: vault_id,
                         owner: token.uid,
                     };
-                    const custom_token = sign(vault_token, process.env.PRIVATE_SERVER_KEY!, { algorithm: 'RS256' });
+                    const privateKey = process.env.PRIVATE_KEY!.replace(/\\n/g, '\n');
+                    const custom_token = sign(vault_token, privateKey, { algorithm: 'RS256' });
                     res.json({ status: "success", token: custom_token });
                     console.log(`Token minting successful`)
                 } catch(error: any) {
