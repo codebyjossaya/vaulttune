@@ -5,7 +5,8 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "test": "node ./main.js"
+    "build": "tsup-node main.ts --format esm --out-dir dist",
+    "test": "node ./dist/main.js"
   },
   "repository": {
     "type": "git",
@@ -40,6 +41,7 @@
     "@types/send": "^0.17.5",
     "@types/serve-static": "^1.15.8",
     "@types/tough-cookie": "^4.0.5",
+    "tsup": "^8.5.0",
     "typescript": "^5.8.3"
   }
 }

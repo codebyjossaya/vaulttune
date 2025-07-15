@@ -21,7 +21,7 @@ export class Server {
         this.app = express.default();
         this.port = 3200;
         this.firebase = admin.initializeApp({
-            credential: admin.credential.cert("./vaulttunemusic_key.json"),
+            credential: admin.credential.cert(process.env.FIREBASE_KEY),
             databaseURL: "https://vaulttunemusic-default-rtdb.firebaseio.com"
         });
         this.auth = getAuth(this.firebase);
