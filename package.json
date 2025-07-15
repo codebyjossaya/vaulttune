@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "VaultTune's backend server for most non-Vault features, including Cloud Sync and VaultShare.",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "test": "node ./main.js"
   },
