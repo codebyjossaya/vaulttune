@@ -58,7 +58,7 @@ export class Server {
                         id: vault_id,
                         owner: token.uid,
                     };
-                    const privateKey = process.env.PRIVATE_KEY!.replace(/\\n/g, '\n');
+                    const privateKey = process.env.PRIVATE_SERVER_KEY!.replace(/\\n/g, '\n');
                     const custom_token = sign(vault_token, privateKey, { algorithm: 'RS256' });
                     res.json({ status: "success", token: custom_token });
                     console.log(`Token minting successful`)
