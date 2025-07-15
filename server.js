@@ -3,11 +3,10 @@ import admin from "firebase-admin";
 import { getAuth } from "firebase-admin/auth";
 import { getDatabase } from "firebase-admin/database";
 import pkg from 'jsonwebtoken';
-import { readFileSync } from "node:fs";
 import cors from 'cors';
 const { sign, verify } = pkg;
 const verifyServer = (token) => {
-    const verified = verify(token, readFileSync("./public.key", "utf-8"), { algorithms: ["RS256"] });
+    const verified = verify(token, process.env.PUBLIC_SERVER_KEY, { algorithms: ["RS256"] });
     if (typeof verified === 'string') {
         return JSON.parse(verified);
     }
@@ -21,7 +20,7 @@ export class Server {
         this.app = express.default();
         this.port = 3200;
         this.firebase = admin.initializeApp({
-            credential: admin.credential.cert(process.env.FIREBASE_KEY),
+            credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)),
             databaseURL: "https://vaulttunemusic-default-rtdb.firebaseio.com"
         });
         this.auth = getAuth(this.firebase);
@@ -51,7 +50,7 @@ export class Server {
                     id: vault_id,
                     owner: token.uid,
                 };
-                const custom_token = sign(vault_token, readFileSync("./private.key", "utf-8"), { algorithm: 'RS256' });
+                const custom_token = sign(vault_token, process.env.PRIVATE_SERVER_KEY, { algorithm: 'RS256' });
                 res.json({ status: "success", token: custom_token });
                 console.log(`Token minting successful`);
             }
