@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Socket } from 'socket.io-client';
-import { Playlist, Room, Song, SongChunk } from '../types';
+import { PlayerConfig, Playlist, Room, Song, SongChunk } from '../types';
 import { Loading } from './Loading';
 import { Header } from './Header';
 import { Overlay } from './Overlay';
@@ -19,7 +18,7 @@ enum UploadStates {
     NO_UPLOAD = "NO_UPLOAD"
 }
 
-const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
+const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
   const [room, joinRoom] = useState< Room | null>(null)
   const [rooms, setRooms] = useState<Room[] >([])
@@ -50,8 +49,11 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
   const currentPlaylistRef = useRef<Playlist | null>(currentPlaylist);
   const songStartRef = useRef<boolean>(false);
 
-  
-  
+
+  const socket = config.socket!;
+  const user = config.user!;
+  const signOut = config.signOut;
+
   function checkSourceBufferDuration(expectedDuration: number) {
     if (bufferRef.current) {
         const EPSILON = 0.0005; // 50 milliseconds
@@ -63,7 +65,7 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
     }
     return false;
   }
-  async function appendBuffer(obj: SongChunk) {
+  function appendBuffer(obj: SongChunk) {
     console.log(`Chunk #${obj.chunk_counter} out of ${chunkCounterRef.current} received, appending to buffer`);
     console.log(`Source ref exists? ${sourceRef.current !== null}`);
     const chunkCounter = chunkCounterRef.current;
@@ -72,23 +74,19 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
     if (obj.chunk_counter + 1 === chunkCounter) {
         const source = sourceRef.current!
         console.log("Ending stream")
-        await new Promise(resolve => {
-            buffer!.addEventListener('updateend', () => {
-                if (checkSourceBufferDuration(source.duration)) {
-                    console.log("SourceBuffer duration is sufficient, resolving")
-                    resolve(true);
-                } else {
-                    console.log("Not the last buffer...waiting")
+        buffer!.addEventListener('updateend', () => {
+            if (checkSourceBufferDuration(source.duration)) {
+                console.log("SourceBuffer duration is sufficient, resolving")
+                console.log(`Updating? ${!bufferRef.current?.updating}`);
+                try {
+                    source!.endOfStream();
+                } catch (error) {
+                    setError(`Error ending stream: ${error}`);
                 }
-            });
+            } else {
+                console.log("Not the last buffer...waiting")
+            }
         });
-        console.log(`Updating? ${!bufferRef.current?.updating}`);
-        
-        try {
-            source!.endOfStream();
-        } catch (error) {
-           setError(`Error ending stream: ${error}`);
-        }
         
         
         
@@ -188,13 +186,23 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
     }, [currentPlaylist]);
 
     useEffect(() => {
-        window.currentlyPlaying = currentlyPlaying;
-        window.setCurrentlyPlaying = setCurrentlyPlaying;
-        window.socket = socket;
-        window.songs = songs;
-        window.room = room;
-        window.playlists = playlists;
-        window.currentPlaylist = currentPlaylist;
+        const handleReconnect = () => {
+            console.log("✅ Reconnected to server");
+            if (!room?.id) return;
+            socket.emit("join room", room.id);
+            socket.emit("get songs");
+            socket.emit("get playlists");
+        };
+        console.log("Registering reconnect handler");
+        socket.on("reconnect", handleReconnect);
+
+        return () => {
+            socket.off("reconnect", handleReconnect); // ✅ Remove only this handler
+        };
+    }, [room?.id]);
+
+    useEffect(() => {
+
         socket.emit('get rooms')
         socket.on('available rooms', (data: Room[]) => setRooms(data))
         socket.on('songs', (songs: Song[]) => {
@@ -271,6 +279,7 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
     // handles appending buffers and detect when end of song is reached
     
         useEffect(() => {
+            // or maybe investigate here...
             socket.on('song data start', (song: Song,total_chunks: number) => {
                 // record the total number of chunks
                 console.log(`Total chunks: ${total_chunks}`)
@@ -321,11 +330,17 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
                     let source = sourceRef.current;
                     audioRef.current.src = URL.createObjectURL(source);
                     
-                    source.addEventListener('sourceopen', async () => {
+
+                    // need to investigate first time playing issue HERE.
+                    source.addEventListener('sourceopen', () => {
+                        console.log("Source opened, setting up source buffer");
                         if (!songStartRef.current) {
                             console.log("Song start event received, setting songStartRef to true");
                             songStartRef.current = true;
-                        } else return; // if songStartRef is already true, return
+                        } else {
+                            console.log("Song start event already received, skipping setup");
+                            return;
+                        }
                         console.log("Source opened, creating source buffer");
                         source!.duration = song.metadata.format.duration;
                         const buf = source!.addSourceBuffer(getMimeType(song));
@@ -356,16 +371,11 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
                                 
                             }
                         };
-                        // if (!endOfSongRef.current) {
-                        //     await new Promise(resolve => {
-                        //         socket.once('song data end', () => {
-                        //             console.log("Song data end received, ending stream");
-                        //             resolve(true);
-                        //         });
-                        //     });
-                        // }
-                        
+                
+                        console.log("Listening for song data chunks");
+                        socket.removeAllListeners(`song data ${song.id}`); // remove any previous listeners for this song
                         socket.on(`song data ${song.id}`, songChunkListener);
+                        // this event is sent in a non timely manner
                         socket.emit(`song data ready ${song.id}`);
                         audioRef.current!.play();
                     });
@@ -378,7 +388,6 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
                 console.log("Song data end received, ending stream");
                 endOfSongRef.current = true; // set end of song to true
             });
-            socket.on('song data', songChunkListener);
             // Instantly skip all remaining chunks from previous song when a new song is requested
 
             
@@ -590,7 +599,16 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
                     }
                     const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
                     return (
-                        <div className='player-list-item' key={song.id} onClick={() => {playSong(song)}}>
+                        <div className='player-list-item' key={song.id} onClick={() => {
+                            playSong(song);
+                            setPlaylistView(null); // close playlist view when a song is played
+                            if (currentPlaylist) {
+                                setCurrentPlaylist(null); // reset current playlist when a song is played
+                            }
+                            if (nextUp) {
+                                setNextUp(null); // reset next up when a song is played
+                            }
+                            }}>
                             {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
                             <p className='song-title'>{song.metadata.common.title}</p>
                             <p className='song-artist'>{song.metadata.common.artist}</p>
@@ -634,7 +652,16 @@ const VaultTunePlayer = ({ socket }: {socket: Socket}) => {
                                 </div>
                             );
                         }))}
+                    
                     </div>
+                    <button className='danger' onClick={() => {
+                        socket.disconnect();
+                    }}>Disconnect from Vault</button>
+                    {user.uid === config.vault?.users[0] ? <button>Vault Settings</button> : null}
+                    <div className='card-footer'>
+                        <p>{user?.displayName}</p>
+                        <button className='danger' onClick={() => {signOut()}}>Sign out</button>
+                </div>
             </div>
         </div>
     );

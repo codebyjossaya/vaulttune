@@ -10,10 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^11.9.1",
     "hls.js": "^1.5.20",
     "lucide-react": "^0.477.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-google-button": "^0.8.0",
+    "react-router-dom": "^7.6.2",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {

@@ -1,4 +1,6 @@
+import { User } from "firebase/auth";
 import { IAudioMetadata, IPicture } from "music-metadata/lib";
+import { Socket } from "socket.io-client";
 export interface Song {
     metadata: IAudioMetadata;
     id: string;
@@ -22,4 +24,19 @@ export interface Playlist {
 export interface SongChunk {
     buffer: ArrayBuffer,
     chunk_counter: number
+}
+
+export interface Vault {
+    tunnel_url: string;
+    users: string[];
+    vault_name: string;
+    id: string;
+    status: "online" | "offline" | "error";
+}
+
+export interface PlayerConfig {
+    socket: Socket | undefined;
+    user: User | null;
+    vault: Vault | undefined;
+    signOut: () => Promise<void>;
 }
