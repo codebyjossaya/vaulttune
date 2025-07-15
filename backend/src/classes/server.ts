@@ -124,12 +124,26 @@ export default class Server {
     }
     
     async stop(error: boolean = false) {
-        console.log("Stopping VaultTune server...");
-        await updateVaultStatus(this, error ? "error" : "offline");
+        console.log("Stopping Vault...");
+        updateVaultStatus(this, error ? "error" : "offline").then(() => {
+            console.log("VaultTune server status updated to offline");
+        }).catch(err => {
+            console.error("Error updating VaultTune server status:", err);
+        }).finally(() => {
+            if (this.tunnel) {
+                console.log("Closing localtunnel...");
+                this.tunnel.close();
+            }
+            if (this.rpc) {
+                console.log("Closing Discord Rich Presence...");
+                this.rpc.destroy();
+            }
+            this.httpServer.close(() => {
+                console.log("VaultTune server stopped successfully");
+            });
+        });
         this.io.close();
-        this.httpServer.close();
-        this.tunnel ? this.tunnel.close() : null;
-        console.log("VaultTune server has stopped running");
+       
     }
     getRooms() {
         return this.rooms.map(room => {
