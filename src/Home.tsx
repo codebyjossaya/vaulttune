@@ -5,6 +5,7 @@ import { Overlay } from './components/Overlay';
 import VaultTunePlayer from './components/Player';
 import { User } from 'firebase/auth';
 import { Vault } from './types';
+import { SideOverlay } from './components/SideOverlay';
 
 
 
@@ -15,10 +16,10 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
   const [error, setError] = useState<string | undefined>(undefined);
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [currentVault, setCurrentVault] = useState<Vault | undefined>(undefined);
+  const [sideOverlay, setSideOverlay] = useState<React.ReactElement | null>(null);
   // const headerRef = useRef<HTMLDivElement>(null);
   // const socketRef = useRef<Socket | undefined>(socket);
   // needs to only exist within this scope
-
   async function fetchVaults() {
     setLoading("Getting vaults...");
     fetch("https://api.jcamille.tech/vaulttune/user/vaults/get", {
@@ -69,6 +70,9 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       }
       return response.json();
     }).then(data => {
+      if (data.error) {
+        throw new Error(data.error);
+      }
       if (!data.vault.tunnel_url) {
         throw new Error("No tunnel URL provided in the response");
       }
@@ -84,6 +88,50 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       console.error("Error connecting to vault:", error);
       setError(`Failed to connect to vault: ${error.message}`);
     });
+  }
+
+  async function unregisterVault(vault: Vault) {
+    if (!vault) {
+      setError("Vault ID is required to unregister");
+      return;
+    }
+    setSideOverlay((
+      <SideOverlay isOpen={true} onClose={() => setSideOverlay(null)}>
+        <div>
+          <h2>Unregister Vault</h2>
+          <p>Are you sure you want to unregister <strong style={{ fontWeight: 'bold' }}>{vault.vault_name}</strong>?</p>
+          <button className='danger'onClick={async () => {
+            const token = await user!.getIdToken();
+            setSideOverlay(null);
+            setLoading("Unregistering vault...");
+            fetch(`https://api.jcamille.tech/vaulttune/user/vault/unregister`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                user_token: token,
+                vault_id: vault.id,
+              }),
+            }).then(response => {
+              if (!response.ok) {
+                throw new Error(`Failed to unregister vault: ${response.statusText}`);
+              }
+              return response.json();
+            }).then(data => {
+              console.log("Vault unregistered successfully:", data);
+              // Refresh the vaults list after unregistering
+              fetchVaults();
+            }).catch(error => {
+              console.error("Error unregistering vault:", error);
+              setError(`Failed to unregister vault: ${error.message}`);
+            });
+          }}>Yes, Unregister</button>
+          <button onClick={() => setSideOverlay(null)}>Cancel</button>
+        </div>
+        
+      </SideOverlay>
+    ));
   }
   useEffect(() => { 
     let counter = 0;
@@ -102,8 +150,8 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
         if (error === "Room does not exist") window.location.reload();
         else setError(error);
       })
-      socket.on('disconnect', () => {
-            console.log("disconnected")
+      socket.on('disconnect', (reason: any) => {
+            console.log("disconnected", reason)
             setConnected(false);
             setLoading(false);
       })
@@ -135,6 +183,9 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
 
   return socket && connected ? <VaultTunePlayer config={{ socket, user, vault: currentVault, signOut }} /> : (
     <>
+    {
+      sideOverlay ? sideOverlay : null
+    }
     {error ?  (
                 <Overlay>
                     <h1>There was an error</h1>
@@ -165,8 +216,8 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
                           ></div>
                           <span>{vault.status === 'online' ? 'Online' : 'Offline'}</span>
                         </div>
-                      <button onClick={() => connectToVault(vault.id)}>Connect</button>
-                      <button className='danger'>Unregister</button>
+                      { vault.status === 'online' ? <button onClick={() => connectToVault(vault.id)}>Connect</button> : null}
+                      <button onClick={() => unregisterVault(vault)} className='danger'>Unregister</button>
                     </div>
                   ))}
                 </div>

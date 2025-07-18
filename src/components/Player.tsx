@@ -106,6 +106,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   }
 
   function playSong(song: Song) {
+    console.log(song)
     songStartRef.current = false; // reset songStartRef to false to allow new song to be played
     if (currentlyPlaying) {
         if (currentlyPlaying.id == song.id) return;
@@ -186,22 +187,6 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     }, [currentPlaylist]);
 
     useEffect(() => {
-        const handleReconnect = () => {
-            console.log("✅ Reconnected to server");
-            if (!room?.id) return;
-            socket.emit("join room", room.id);
-            socket.emit("get songs");
-            socket.emit("get playlists");
-        };
-        console.log("Registering reconnect handler");
-        socket.on("reconnect", handleReconnect);
-
-        return () => {
-            socket.off("reconnect", handleReconnect); // ✅ Remove only this handler
-        };
-    }, [room?.id]);
-
-    useEffect(() => {
 
         socket.emit('get rooms')
         socket.on('available rooms', (data: Room[]) => setRooms(data))
@@ -211,9 +196,12 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         });
         socket.on('playlists', (playlists: Playlist[]) => setPlaylists(playlists));
 
+        // freezes right after joining a room, eventually unfreezes.
         socket.on('status', (state: string) => {
-            if (state.includes('Joined room ')) joinRoom(rooms.find(room => room.id = state.substring(12,state.length))!)
-            if (state === 'Song successfully uploaded') {
+            console.log("New state received:", state);
+            // target THIS. get rid of rooms in dependency array.
+            if (state.includes('Joined room ')) joinRoom(rooms.find(room => room.id === state.substring(12,state.length))!)
+            else if (state === 'Song successfully uploaded') {
                 console.log("Upload success")
                 setUploadState(UploadStates.SUCCESS);
                 setTimeout(() => {
@@ -221,66 +209,56 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     enableUploadDialog(false);
                 },2000)
             }
-            if(state.includes(`Left room`)) {
+            else if(state.includes(`Left room`)) {
                 setCurrentlyPlaying(null);
                 joinRoom(null);
                 setSongs([]);
             };
+            console.log("State changed to:", state);
         });
+        return () => {
+            socket.removeAllListeners('available rooms');
+            socket.removeAllListeners('songs');
+            socket.removeAllListeners('playlists');
+            socket.removeAllListeners('status');
+        }
+    });
 
+    useEffect(() => {
+
+        
+        
         socket.on("song data - iOS", (song: Song) => setCurrentlyPlaying(song))
         socket.on("song playlist - iOS", (playlist_url: string) => {
             console.log("Playlist URL:", playlist_url)
             audioRef!.current!.src = playlist_url;
         });
-    
+
+            socket.on('song data end', () => {
+                console.log("Song data end received, ending stream");
+                endOfSongRef.current = true; // set end of song to true
+            });
+            // Instantly skip all remaining chunks from previous song when a new song is requested
+
+            
         
         socket.on('error', (error: string) => {
             setError("There was an error. View the error here: " + error)
-        })
+        });
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
         return () => {
             socket.removeAllListeners('song data - iOS');
             socket.removeAllListeners('song playlist - iOS');
-            socket.removeAllListeners('available rooms');
-            socket.removeAllListeners('songs');
-            socket.removeAllListeners('status');
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [rooms])
-
-        useEffect(() => {
-            if(currentlyPlaying) {
-                playerRef.current!.style.height = `calc(${isOniOS(window) ? `${0.8 * window.innerHeight}px` : "80vh" } - ${playingRef.current!.offsetHeight}px)`
-                // add multiple artists if needed
-                if(currentlyPlaying.metadata.common.artists.length > 1) {
-                    currentlyPlaying.artist_str = ""
-                    const artists: [] = currentlyPlaying.metadata.common.artists;
-                    artists.forEach((artist, index) => {
-                        console.log(index)
-                        if(index == artists.length - 1) currentlyPlaying.artist_str += `, and ${artist}`;
-                        else {
-                            if(artist != "") currentlyPlaying.artist_str += artist + ", "
-                        }
-                    })
-                } else {
-                    currentlyPlaying.artist_str = currentlyPlaying.metadata.common.artist;
-                }
-            } else {
-                if(playerRef.current) {
-                    playerRef.current!.style.height = ``;
-                }
-                
-            }
+            socket.removeAllListeners("song data end")
+            socket.removeAllListeners("song data")
             
-        },[currentlyPlaying, playerRef.current])
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [rooms]);
 
-    // handles appending buffers and detect when end of song is reached
-    
         useEffect(() => {
-            // or maybe investigate here...
-            socket.on('song data start', (song: Song,total_chunks: number) => {
+            function songDataListener(song: Song, total_chunks: number) {
                 // record the total number of chunks
                 console.log(`Total chunks: ${total_chunks}`)
                 chunkCounterRef.current = total_chunks;
@@ -378,28 +356,51 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         // this event is sent in a non timely manner
                         socket.emit(`song data ready ${song.id}`);
                         audioRef.current!.play();
+
+                        
                     });
-                    
-                    
+                
+                
                 }   
-            });
+            }
+            console.log("Song data start listener registered");
+            socket.on('song data start', songDataListener);
+            return () => {
+                console.log("Removing song data start listener");
+                socket.removeListener("song data start", songDataListener);
+            }
+        });
 
-            socket.on('song data end', () => {
-                console.log("Song data end received, ending stream");
-                endOfSongRef.current = true; // set end of song to true
-            });
-            // Instantly skip all remaining chunks from previous song when a new song is requested
-
-            
-                return () => {
-                    socket.removeAllListeners("song data end")
-                    socket.removeAllListeners("song data")
-                    socket.removeAllListeners("song data start")
+        useEffect(() => {
+            setInterval(() => {
+                console.log("tick");
+            }, 1000);
+            if(currentlyPlaying) {
+                playerRef.current!.style.height = `calc(${isOniOS(window) ? `${0.8 * window.innerHeight}px` : "80vh" } - ${playingRef.current!.offsetHeight}px)`
+                // add multiple artists if needed
+                if(currentlyPlaying.metadata.common.artists.length > 1) {
+                    currentlyPlaying.artist_str = ""
+                    const artists: [] = currentlyPlaying.metadata.common.artists;
+                    artists.forEach((artist, index) => {
+                        console.log(index)
+                        if(index == artists.length - 1) currentlyPlaying.artist_str += `, and ${artist}`;
+                        else {
+                            if(artist != "") currentlyPlaying.artist_str += artist + ", "
+                        }
+                    })
+                } else {
+                    currentlyPlaying.artist_str = currentlyPlaying.metadata.common.artist;
                 }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-            },[])
+            } else {
+                if(playerRef.current) {
+                    playerRef.current!.style.height = ``;
+                }
+                
+            }
+            
+        },[currentlyPlaying, playerRef.current])
 
-
+    // handles appending buffers and detect when end of song is reached
     
     const headerButtons = (
         <>

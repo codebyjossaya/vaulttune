@@ -64,6 +64,14 @@
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
+@media screen and (max-width: 523px) {
+  .card {
+    padding: 1em;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.3);
+  }
+}
+
 button {
   background-color: transparent;
   margin: 10pt;
@@ -106,7 +114,7 @@ button:focus-visible {
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1rem;
   align-items: stretch;
   width: 100%;
@@ -117,6 +125,15 @@ button:focus-visible {
   box-sizing: border-box;
 }
 
+@media screen and (max-width: 900px) {
+  .list {
+    grid-template-rows: repeat(0, 1fr); /* Single column on smaller screens */
+    grid-template-columns: none;
+    overflow-y: auto; /* Add scrolling if content overflows */
+    max-height: 80vh; /* Limit height to enable scrolling */
+  }
+}
+
 .list-item {
   padding: 12px;
   margin-bottom: 8px;
@@ -125,6 +142,7 @@ button:focus-visible {
   backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: transform 0.2s, background-color 0.2s;
+  overflow: hidden;
 }
 
 .list-item:hover {
@@ -152,6 +170,16 @@ margin-bottom: 0;
   margin-right: -2em;
 }
 
+@media screen and (max-width: 523px) {
+  .card-footer {
+    margin-top: 1em;
+    margin-bottom: -1em;
+    margin-left: -1em;
+    margin-right: -1em;
+
+  }
+}
+  
 .list-item {
   display: block;
   width: 100%;
