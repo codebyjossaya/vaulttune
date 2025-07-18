@@ -3,7 +3,7 @@ import * as VaultTuneServer from "../classes/server";
 import open from "open";
 import { Express, json } from "express";
 import { error } from "console";
-import { existsSync, writeFileSync, readFileSync, unlinkSync } from "fs";
+import { existsSync, writeFileSync, readFileSync, unlinkSync, mkdirSync } from "fs";
 export function auth(t: VaultTuneServer.default): Promise<string | Error> {
     if(!existsSync(`${__dirname}/../../settings/auth/vaulttune_token.txt`)) {
         return new Promise((resolve, reject) => {
@@ -45,6 +45,9 @@ export function auth(t: VaultTuneServer.default): Promise<string | Error> {
                     return response.json();
                 }).then(data => {
                     t.options.token = data.token;
+                    if (!existsSync(`${__dirname}/../../settings/auth`)) {
+                        mkdirSync(`${__dirname}/../../settings/auth`, { recursive: true });
+                    }
                     writeFileSync(`${__dirname}/../../settings/auth/vaulttune_token.txt`, t.options.token);
                     console.log("Sucessfully authenticated with VaultTune");
                     res.status(200).send("Authentication successful");
@@ -66,7 +69,7 @@ export function auth(t: VaultTuneServer.default): Promise<string | Error> {
                     }
                 });
             });
-            open("http://localhost:5173/?callback")
+            open("http://vaulttune.jcamille.tech/?callback")
         });
     } else {
         return new Promise((resolve, reject) => {

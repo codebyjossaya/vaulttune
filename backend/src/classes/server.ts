@@ -56,12 +56,15 @@ export default class Server {
         this.io.on('connection', (socket: Socket) => {
             console.log(`Device ${socket.id} has connected to the server`)
             socket.emit("status","Connection recieved");
-            socket.on('get rooms', () => socket.emit("available rooms",this.getRooms()));
+            socket.on('get rooms', () => {
+                console.log(`Device ${socket.id} requested available rooms`);
+                socket.emit("available rooms",this.getRooms());
+            });
             socket.on('leave room', (room_id) => {handleLeaveRoom(this,socket,room_id)});
             // handlers
             socket.on('join room',(id: string) => (handleJoinRoom(this,socket, id)));
             socket.on('play song', (room_id: string, song_id: string) => { handlePlaySong(this, socket, room_id, song_id)});
-            // add a cancel play song listener
+            // add a cancel play song listener1
             socket.on('play song - iOS', (room_id: string, song_id: string) => handleiOSPlaySong(this, socket, room_id, song_id));
             socket.on('upload song', (room_id: string, buf: ArrayBuffer) => {handleUploadSong(this,socket,room_id,buf)});
             socket.on('get songs', (room_id: string) => {handleGetSongs(this,socket,room_id)});
@@ -71,24 +74,35 @@ export default class Server {
             socket.on('export room', (room_id: string) => {handleExportRoom(this, socket, room_id)});
         });
 
-        process.on('SIGINT', async () => {
-            console.log("SIGINT received. Stopping VaultTune server...");
+        process.on('SIGINT', () => {
+            console.log("SIGINT received.");
             this.stop().then(() => {
                 console.log("VaultTune server stopped successfully");
                 process.exit(0);
+            }).catch((err) => {
+                console.error("Error during shutdown:", err);
+                process.exit(1);
             });
-            
         });
-        process.on('SIGTERM', async () => {
-            console.log("SIGTERM received. Stopping VaultTune server...");
-            await this.stop();
-            process.exit(0);
+        process.on('SIGTERM', () => {
+            console.log("SIGTERM received.");
+            this.stop().then(() => {
+                console.log("VaultTune server stopped successfully");
+                process.exit(0);
+            }).catch((err) => {
+                console.error("Error during shutdown:", err);
+                process.exit(1);
+            });
         });
-        process.on('uncaughtException', async (error) => {
+        process.on('uncaughtException', (error) => {
             console.error("Uncaught Exception: ", error);
-            console.log("Stopping VaultTune server...");
-            await this.stop(true);
-            process.exit(1);
+            this.stop(true).then(() => {
+                console.log("VaultTune server stopped successfully");
+                process.exit(1);
+            }).catch((err) => {
+                console.error("Error during shutdown after uncaught exception:", err);
+                process.exit(1);
+            });
         });
     }
     async createRoom(name: string, song_dir: string): Promise<Room> {
@@ -130,12 +144,9 @@ export default class Server {
     stop(error: boolean = false) {
         return new Promise<void>(async (resolve, reject) => {
             console.log("Stopping Vault...");
-            updateVaultStatus(this, error ? "error" : "offline").then(() => {
+            this.options.token ? updateVaultStatus(this, error ? "error" : "offline").then(() => {
                 console.log("VaultTune server status updated to offline");
-            }).catch(err => {
-                console.error("Error updating VaultTune server status:", err);
-                reject(err);
-            }).finally(() => {
+            }).catch(reject).finally(() => {
                 if (this.tunnel) {
                     console.log("Closing localtunnel...");
                     this.tunnel.close();
@@ -148,7 +159,7 @@ export default class Server {
                     console.log("VaultTune server stopped successfully");
                 });
                 resolve();
-            });
+            }): null;
             this.io.close();
         });
        
