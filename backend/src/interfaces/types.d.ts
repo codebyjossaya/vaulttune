@@ -14,6 +14,7 @@ export class ServerOptions {
     public network?: boolean;
     public name?: string | "Untitled Vault";
     public token?: string;
+    public api: string;
 }
 
 

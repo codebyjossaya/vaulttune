@@ -2,7 +2,6 @@ import * as VaultTuneServer from "../classes/server";
 
 export default function updateVaultStatus(t: VaultTuneServer.default, status: string): Promise<string | Error> {
     return new Promise((resolve, reject) => {
-        console.log("Updating VaultTune server status...");
 
         fetch("https://api.jcamille.tech/vaulttune/vault/status", {
             method: "POST",
@@ -19,7 +18,7 @@ export default function updateVaultStatus(t: VaultTuneServer.default, status: st
                 reject(new Error(`Failed to update VaultTune status: ${response.statusText}`));
                 return;
             } else {
-                console.log("VaultTune status updated successfully");
+                console.log("VaultTune status updated to ", status);
                 resolve("success");
             }
         }).catch(error => {

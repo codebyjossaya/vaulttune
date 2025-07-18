@@ -13,6 +13,7 @@ export function handleJoinRoom(t: Server, socket: Socket, id: string) {
             return song.exportSong()
         }
         ));
+        console.log("Emitted all songs to device " + socket.id);
         socket.emit("playlists",room.playlists);
     } else {
         console.error(`Room ${id} does not exist`)

@@ -29,7 +29,7 @@ export function auth(t: VaultTuneServer.default): Promise<string | Error> {
                     reject(new Error("Token is required"));
                     return;
                 }
-                fetch("https://api.jcamille.tech/vaulttune/auth/vault/getToken/", {
+                fetch(`${t.options.api}/vaulttune/auth/vault/getToken/`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -73,7 +73,7 @@ export function auth(t: VaultTuneServer.default): Promise<string | Error> {
             console.log("Verifying existing VaultTune token...");
             t.options.token = readFileSync(`${__dirname}/../../settings/auth/vaulttune_token.txt`, "utf-8");
 
-            fetch("https://api.jcamille.tech/vaulttune/auth/vault/verifyToken/", {
+            fetch(`${t.options.api}/vaulttune/auth/vault/verifyToken/`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

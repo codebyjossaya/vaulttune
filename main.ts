@@ -5,7 +5,7 @@ const readline = require("readline-sync");
 
 
 async function main() {
-	const server = new Server({name: "Jossaya's Vault", network: true});
+	const server = new Server({name: "Jossaya's Vault", network: true, api: "https://api.jcamille.tech"});
 
 	
 	const files = readdirSync(`${__dirname}/backend/settings/rooms`);

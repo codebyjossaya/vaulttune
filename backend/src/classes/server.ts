@@ -33,7 +33,7 @@ export default class Server {
     public address: string;
     public rpc: Client | undefined;
 
-    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault'}) {
+    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech/vaulttune'}) {
         this.options = options;
         this.app = express();
         this.app.use(cors({
@@ -73,18 +73,22 @@ export default class Server {
 
         process.on('SIGINT', async () => {
             console.log("SIGINT received. Stopping VaultTune server...");
-            await this.stop();
-            process.exit(0);
+            this.stop().then(() => {
+                console.log("VaultTune server stopped successfully");
+                process.exit(0);
+            });
+            
         });
         process.on('SIGTERM', async () => {
             console.log("SIGTERM received. Stopping VaultTune server...");
             await this.stop();
             process.exit(0);
         });
-        process.on('uncaughtException', (error) => {
+        process.on('uncaughtException', async (error) => {
             console.error("Uncaught Exception: ", error);
             console.log("Stopping VaultTune server...");
-            this.stop(true).then(() => process.exit(1));
+            await this.stop(true);
+            process.exit(1);
         });
     }
     async createRoom(name: string, song_dir: string): Promise<Room> {
@@ -123,26 +127,30 @@ export default class Server {
         
     }
     
-    async stop(error: boolean = false) {
-        console.log("Stopping Vault...");
-        updateVaultStatus(this, error ? "error" : "offline").then(() => {
-            console.log("VaultTune server status updated to offline");
-        }).catch(err => {
-            console.error("Error updating VaultTune server status:", err);
-        }).finally(() => {
-            if (this.tunnel) {
-                console.log("Closing localtunnel...");
-                this.tunnel.close();
-            }
-            if (this.rpc) {
-                console.log("Closing Discord Rich Presence...");
-                this.rpc.destroy();
-            }
-            this.httpServer.close(() => {
-                console.log("VaultTune server stopped successfully");
+    stop(error: boolean = false) {
+        return new Promise<void>(async (resolve, reject) => {
+            console.log("Stopping Vault...");
+            updateVaultStatus(this, error ? "error" : "offline").then(() => {
+                console.log("VaultTune server status updated to offline");
+            }).catch(err => {
+                console.error("Error updating VaultTune server status:", err);
+                reject(err);
+            }).finally(() => {
+                if (this.tunnel) {
+                    console.log("Closing localtunnel...");
+                    this.tunnel.close();
+                }
+                if (this.rpc) {
+                    console.log("Closing Discord Rich Presence...");
+                    this.rpc.destroy();
+                }
+                this.httpServer.close(() => {
+                    console.log("VaultTune server stopped successfully");
+                });
+                resolve();
             });
+            this.io.close();
         });
-        this.io.close();
        
     }
     getRooms() {
