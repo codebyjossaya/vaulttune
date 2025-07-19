@@ -144,9 +144,7 @@ export default class Server {
     stop(error: boolean = false) {
         return new Promise<void>(async (resolve, reject) => {
             console.log("Stopping Vault...");
-            this.options.token ? updateVaultStatus(this, error ? "error" : "offline").then(() => {
-                console.log("VaultTune server status updated to offline");
-            }).catch(reject).finally(() => {
+            this.options.token ? updateVaultStatus(this, error ? "error" : "offline").catch(reject).finally(() => {
                 if (this.tunnel) {
                     console.log("Closing localtunnel...");
                     this.tunnel.close();

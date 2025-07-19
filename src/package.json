@@ -1,9 +1,15 @@
 {
-  "name": "vt_server",
-  "version": "0.1.0",
+  "name": "src",
   "private": true,
+  "version": "0.0.0",
+  "main": "dist-electron/main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
@@ -13,6 +19,7 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "chokidar": "^4.0.3",
+    "concurrently": "^9.2.0",
     "cors": "^2.8.5",
     "discord-rpc": "^4.0.1",
     "express": "^4.21.2",
@@ -31,17 +38,19 @@
     "typescript": "^5.8.2",
     "web-vitals": "^2.1.4"
   },
-  "scripts": {
-    "start": "node ./main.js",
-    "build": "npx tsc ./main.ts --esModuleInterop"
-  },
   "devDependencies": {
-    "@types/discord-rpc": "^4.0.9",
-    "@types/express": "^5.0.0",
-    "@types/fluent-ffmpeg": "^2.1.27",
-    "@types/localtunnel": "^2.0.4",
-    "electron": "^34.5.8",
-    "electron-builder": "^25.1.8",
-    "electron-is-dev": "^3.0.1"
+    "@eslint/js": "^9.30.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "electron": "^37.2.3",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.30.1",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.35.1",
+    "vite": "^7.0.4"
   }
 }
