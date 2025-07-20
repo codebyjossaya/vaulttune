@@ -1,6 +1,7 @@
+import { UserRecord } from "firebase-admin/auth";
 export interface serverToken {
     id: string;
-    owner: string;
+    user: UserRecord;
 }
 
 export interface userVault {

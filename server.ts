@@ -54,13 +54,14 @@ export class Server {
                     console.log(`Generating Vault ID`)
                     const vault_id = `vault_${Math.random().toString(36).substr(2, 9)}`;
                     console.log(`Assigning Vault ID ${vault_id} and minting token...`);
+                    const user = await this.auth.getUser(token.uid);
                     const vault_token: serverToken = {
                         id: vault_id,
-                        owner: token.uid,
+                        user
                     };
                     const privateKey = process.env.PRIVATE_SERVER_KEY!.replace(/\\n/g, '\n');
                     const custom_token = sign(vault_token, privateKey, { algorithm: 'RS256' });
-                    res.json({ status: "success", token: custom_token });
+                    res.json({ status: "success", token: custom_token, user});
                     console.log(`Token minting successful`)
                 } catch(error: any) {
                     console.log(error)
@@ -148,7 +149,7 @@ export class Server {
                     const { vault_name, tunnel_url, token } = req.body;
                     console.log(`Authenticating Vault...`)
                     const server_token = verifyServer(token);
-                    console.log(`Vault ${server_token.id} authenticated, registering Vault for User ${server_token.owner}`)
+                    console.log(`Vault ${server_token.id} authenticated, registering Vault for User ${server_token.user.uid}`)
                     if (!vault_name || !tunnel_url) {
                         throw new Error("Vault name and tunnel URL are required");
                     }
@@ -160,9 +161,9 @@ export class Server {
 
                     // Get references to the vault and user vaults in the database
                     const vaultRef = this.database.ref(`/vaults/${server_token.id}`);
-                    const userVaultRef = this.database.ref(`/users/${server_token.owner}/vaults/${server_token.id}`);
+                    const userVaultRef = this.database.ref(`/users/${server_token.user.uid}/vaults/${server_token.id}`);
                     // Register the vault with the user's vaults
-                    console.log(`Adding Vault to User ${server_token.owner}'s profile`)
+                    console.log(`Adding Vault to User ${server_token.user.uid}'s profile`)
                     userVaultRef.set({ vault_name, id: server_token.id });
                     // Get global vault data
                     const vaultSnapshot = await vaultRef.once('value');
@@ -172,15 +173,15 @@ export class Server {
                         if (!vaultSnapshot.exists()) {
                             // if not, create a new vault entry
                             console.log(`Performing first-time Vault registration`)
-                            const users: string[] = [server_token.owner];
+                            const users: string[] = [server_token.user.uid];
                             vaultRef.set({ vault_name, tunnel_url, users, id: server_token.id });
                         } else {
                             console.log(`Vault is already registered...updating Vault accordingly`)
                             // if it exists, update the vault entry with the new tunnel URL and add the user if not already present
                             const existingData = vaultSnapshot.val();
                             const usersList: string[] = Array.isArray(existingData.users) ? existingData.users : [];
-                            if (!usersList.includes(server_token.owner)) {
-                                usersList.push(server_token.owner);
+                            if (!usersList.includes(server_token.user.uid)) {
+                                usersList.push(server_token.user.uid);
                         }
                         vaultRef.update({ tunnel_url, users: usersList });
                     }
