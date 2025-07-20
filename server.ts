@@ -79,7 +79,7 @@ export class Server {
                     console.log(`Verifying token..`)
                     const vault_token_data = verifyServer(vault_token);
                     // Verify the vault token
-                    res.status(200).json({status: "success", vault: vault_token_data});
+                    res.status(200).json({status: "success", ...vault_token_data});
                     console.log(`Verification of Vault ${vault_token_data.id}'s token was successful!`);
                 } catch (error: any) {
                     console.log(error)
