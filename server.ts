@@ -311,6 +311,152 @@ export class Server {
                     ;
                 }
             });
+            // add user to vault
+            this.app.post('/vaulttune/user/vault/addUser', async (req: express.Request, res: express.Response) => {
+                console.log(`Request to add user to Vault received`)
+                try {
+                    const { vault_token, user_email } = req.body;
+                    if (!vault_token || !user_email) {
+                        throw new Error("Vault token and user email are required");
+                    }
+                    console.log(`Authenticating Vault...`)
+                    const server_token = verifyServer(vault_token);
+                    console.log(`Vault ${server_token.id} authenticated! Adding user ${user_email} to Vault`)
+                    // Get the user by email
+                    const userRecord = await this.auth.getUserByEmail(user_email);
+                    // Get reference to the vault in the database
+                    const userVaultRef = this.database.ref(`/users/${userRecord.uid}/vaults/requests/${server_token.id}`);
+                    const requestRef = this.database.ref(`/vaults/${server_token.id}/requests/${userRecord.uid}`);
+                    // Get vault name
+                    const vaultRef = this.database.ref(`/vaults/${server_token.id}`);
+                    const vaultSnapshot = await vaultRef.once('value');
+                    if (!vaultSnapshot.exists()) {
+                        throw new Error("Vault not found");
+                    }
+                    const vaultData = vaultSnapshot.val();
+                    // Check if the user is already in the vault
+                    if (vaultData.users && Array.isArray(vaultData.users) && vaultData.users.includes(userRecord.uid)) {
+                        throw new Error("User is already in the vault");
+                    }
+                    // Create a user vault request
+                    console.log(`Creating user Vault request for ${user_email}`)
+
+                    const request = {
+                        vault_id: server_token.id,
+                        owner: server_token.user,
+                        vault_name: vaultData.vault_name,
+                        status: "pending"
+                    }
+                   
+
+                    await userVaultRef.set(request);
+                    await requestRef.set(request);
+
+                    res.json({status: "success", message: `Succesfully sent a request to user ${user_email} to join Vault ${vaultData.vault_id}`});
+                    console.log(`Succesfully sent a request to user ${user_email} to join Vault ${vaultData.vault_id}`);
+                } catch (error: any) {
+                    console.log(error)
+                    res.status(400).json({status: "failed", error: error.message});
+                }
+            });
+            this.app.post('/vaulttune/user/vault/requests', async (req: express.Request, res: express.Response) => {
+                console.log(`Request to retrieve Vault requests received`)
+                try {
+                    const { user_token } = req.body;
+                    if (!user_token) {
+                        throw new Error("User token is required");
+                    }
+                    console.log(`Authenticating user...`)
+                    const user_token_data = await this.auth.verifyIdToken(user_token);
+                    console.log(`User ${user_token_data.uid} authenticated! Getting Vault requests...`)
+                    const ref = this.database.ref(`/users/${user_token_data.uid}/vaults/requests`);
+                    const snapshot = await ref.once('value');
+                    if (!snapshot.exists()) {
+                        console.error(`User ${user_token_data.uid} has no vault requests`)
+                        res.json({status: "success", requests: []});
+                        return;
+                    }
+                    const requests: any[] = Object.values(snapshot.val());
+                    console.log(`User ${user_token_data.uid} has the following Vault requests:`, requests);
+                    res.json({status: "success", requests});
+                } catch (error: any) {
+                    console.log(error)
+                    res.status(400).json({status: "failed", error: error.message});
+                }
+            });
+            this.app.post('/vaulttune/user/vault/handleRequest', async (req: express.Request, res: express.Response) => {
+                console.log(`Request to handle Vault request received`)
+                try {
+                    const { user_token, vault_id, action } = req.body;
+                    if (!user_token) {
+                        throw new Error("User token is required");
+                    }
+                    console.log(`Authenticating user...`)
+                    const user_token_data = await this.auth.verifyIdToken(user_token);
+                    console.log(`User ${user_token_data.uid} authenticated! Getting Vault requests...`)
+                    const ref = this.database.ref(`/users/${user_token_data.uid}/vaults/requests`);
+                    const snapshot = await ref.once('value');
+                    if (!snapshot.exists()) {
+                        console.error(`User ${user_token_data.uid} has no vault requests`)
+                        res.json({status: "success", requests: []});
+                        return;
+                    }
+                    const requests: any[] = Object.values(snapshot.val());
+                    console.log(`User ${user_token_data.uid} has the following Vault requests:`, requests);
+                    // Find the request for the specified vault ID
+                    const request = requests.find((req: any) => req.id === vault_id);
+                    if (!request) {
+                        throw new Error("Vault request not found");
+                    }
+                    if (action !== 'accept' && action !== 'reject') {
+                        throw new Error("Action must be either 'accept' or 'reject'");
+                    }
+                    // Get the vault reference
+                    const vaultRef = this.database.ref(`/vaults/${vault_id}`);
+                    const vaultSnapshot = await vaultRef.once('value');
+                    if (!vaultSnapshot.exists()) {
+                        throw new Error("Vault not found");
+                    }
+                    const vaultData = vaultSnapshot.val();
+                    // Check if the user is already in the vault
+                    if (vaultData.users && Array.isArray(vaultData.users) && vaultData.users.includes(user_token_data.uid)) {
+                        throw new Error("User is already in the vault");
+                    }
+                    if (action === 'accept') {
+                        // Add the user to the vault
+                        console.log(`Accepting request for user ${user_token_data.uid} to join Vault ${vault_id}`)
+                        const usersList: string[] = Array.isArray(vaultData.users) ? vaultData.users : [];
+                        if (!usersList.includes(user_token_data.uid)) {
+                            usersList.push(user_token_data.uid);
+                        }
+                        await vaultRef.update({ users: usersList });
+                        // Remove the request from the user's requests
+                        const userVaultRef = this.database.ref(`/users/${user_token_data.uid}/vaults/${vault_id}`);
+                        await userVaultRef.set({
+                            id: vault_id,
+                            vault_name: vaultData.vault_name,
+                        });
+                        const userRequestRef = this.database.ref(`/users/${user_token_data.uid}/vaults/requests/${vault_id}`);
+                        const requestRef = this.database.ref(`/vaults/${vault_id}/requests/${user_token_data.uid}`);
+                        await requestRef.child('status').set('accepted');
+                        await userRequestRef.remove();
+                        res.json({status: "success", message: `User ${user_token_data.uid} added to Vault ${vault_id}`});
+                    }
+                    else if (action === 'reject') {
+                        // Remove the request from the user's requests
+                        console.log(`Rejecting request for user ${user_token_data.uid} to join Vault ${vault_id}`)
+                        const userRequestRef = this.database.ref(`/users/${user_token_data.uid}/vaults/requests/${vault_id}`);
+                        const requestRef = this.database.ref(`/vaults/${vault_id}/requests/${user_token_data.uid}`);
+                        await requestRef.child('status').set('rejected');
+                        await userRequestRef.remove();
+                        res.json({status: "success", message: `Request for user ${user_token_data.uid} to join Vault ${vault_id} rejected`});
+                    }
+                } catch (error: any) {
+                    console.log(error)
+                    res.status(400).json({status: "failed", error: error.message});
+                }
+            });
+
         }
     start(): void {
         this.server = this.app.listen(this.port, () => {
