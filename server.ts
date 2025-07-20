@@ -388,8 +388,8 @@ export class Server {
                 console.log(`Request to handle Vault request received`)
                 try {
                     const { user_token, vault_id, action } = req.body;
-                    if (!user_token) {
-                        throw new Error("User token is required");
+                    if (!user_token || !vault_id || !action) {
+                        throw new Error("User token, vault ID, and action are required");
                     }
                     console.log(`Authenticating user...`)
                     const user_token_data = await this.auth.verifyIdToken(user_token);
