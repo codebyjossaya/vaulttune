@@ -1,5 +1,6 @@
 import keytar from 'keytar'
 import { AuthState } from 'src/types/types';
+import { server } from './main';
 export function getAuthState(): Promise<AuthState> {
     return new Promise((resolve, reject) => {
         keytar.findPassword('vaulttune').then((token) => {
@@ -9,7 +10,8 @@ export function getAuthState(): Promise<AuthState> {
                 return;
             }
             console.log("Verifying existing VaultTune token...");
-            fetch(`https://api.jcamille.tech/vaulttune/auth/vault/verifyToken/`, {
+            const api = server.options.api || 'https://api.jcamille.tech';
+            fetch(`${api}/vaulttune/auth/vault/verifyToken/`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

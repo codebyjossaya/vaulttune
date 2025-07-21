@@ -24,12 +24,16 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, api: string = 'h
                 console.log("Received authentication request for VaultTune");
                 received = true;
                 console.log("Body received: ", req.body)
-                const { token } = req.body;
+                const { token, api } = req.body;
                 if (!token) {
                     console.log("No token presented")
                     res.status(400).send("Token is required");
                     reject(new Error("Token is required"));
                 }
+                if (api) {
+                    server.options.api = api;
+                }
+                console.log("Server API set to:", server.options.api);
                 fetch(`${server.options.api}/vaulttune/auth/vault/getToken/`, {
                     method: "POST",
                     headers: {
@@ -47,16 +51,15 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, api: string = 'h
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 }).then((data: any) => {
                     server.options.token = data.token;
-                    server.options.api = data.api;
+                    server.options.api = api;
                     server.user = data.user;
-                    console.log("Token received: ", server.options.token);
                     // Store the token in keytar
                     console.log("Successfully authenticated with VaultTune");
                     keytar.setPassword('vaulttune', 'token', server.options.token).then(() => {
                         console.log("Token stored in keytar successfully.");
                         res.status(200).send("Authentication successful");
                         console.log(data);
-                        resolve({ authenticated: true, user: data.user });
+                        resolve({ authenticated: true, user: data.user, api, });
                     }).catch((error) => {
                         console.error("Failed to store token in keytar:", error);
                         reject(new Error("Failed to store token in keytar"));
@@ -73,6 +76,7 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, api: string = 'h
                     server.httpServer.close(() => {
                         console.log("HTTP server closed after authentication");
                     });
+                    received = false;
                     
                 });
 

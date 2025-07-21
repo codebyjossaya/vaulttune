@@ -22,13 +22,15 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     }
     // add in compression
     const buf = song!.getBuffer();
-
-    t.rpc.setActivity({
-        details: `Playing ${song.metadata.common.title}`,
-        state: `by ${song.metadata.common.artist}`,
-        startTimestamp: new Date(),
-        instance: false,
-    })
+    if (t.rpc) {
+        t.rpc.setActivity({
+            details: `Playing ${song.metadata.common.title}`,
+            state: `by ${song.metadata.common.artist}`,
+            startTimestamp: new Date(),
+            instance: false,
+        })
+    }
+    
     let chunkSize = (buf.byteLength / song.metadata.format.duration) * 5
     const total_chunks = Math.ceil(buf.byteLength / chunkSize);
     let timeoutId: NodeJS.Timeout | null = null;

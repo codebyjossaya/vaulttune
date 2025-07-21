@@ -39,7 +39,7 @@ export default class Server {
     public rpc: Client | undefined;
     public state: "online" | "offline" | "error" = "offline";
 
-    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech/vaulttune'}) {
+    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech'}) {
         this.options = options;
         this.app = express();
         this.app.use(cors({
@@ -277,6 +277,7 @@ export default class Server {
 
         options.users = null;
         options.token = this.options.token;
+        console.log("current server api: ", options.api);
         this.options = {name: options.name || "Untitled Vault", network: options.network, api: options.api, token: options.token};
         console.log("Server options updated successfully:", this.options);
         

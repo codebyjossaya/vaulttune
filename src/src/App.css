@@ -10,7 +10,14 @@
   padding: 8pt; /* Increased padding for a larger input field */
   font-family: 'Courier New', Courier, monospace;
   font-size: 1.2em; /* Increased font size */
+  max-width: 100%;
+  box-sizing: border-box;
 }
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 .text-input:focus {
   opacity: 1;
 }

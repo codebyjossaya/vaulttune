@@ -199,16 +199,14 @@ export function InitialSetup({setOptions, authState}: {setOptions: (options: Opt
         null,
         (
             <>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(0, -50%)', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '50%' }}>
-                    <input
-                        type="text"
-                        className="text_input"
-                        placeholder="Enter vault name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        style={{ textAlign: 'center' }}
-                    />
-                </div>
+                <input
+                    type="text"
+                    className="text_input"
+                    placeholder="Enter vault name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    style={{ textAlign: 'center' }}
+                />
             </>
         ),
         (<>
@@ -283,7 +281,7 @@ export function InitialSetup({setOptions, authState}: {setOptions: (options: Opt
                 <div className="card">
                     <h1>Setup Complete</h1>
                     <p>Your vault has been set up successfully!</p>
-                    <button onClick={() => setOptions({ name, rooms, users, network: networkMethod == "tunneling" ? true : false, api: "https://api.jcamille.tech/vaulttune" })}>Finish Setup</button>
+                    <button onClick={() => setOptions({ name, rooms, users, network: networkMethod == "tunneling" ? true : false })}>Finish Setup</button>
                 </div>
             </div>
         );
@@ -291,17 +289,17 @@ export function InitialSetup({setOptions, authState}: {setOptions: (options: Opt
     
     return (
 
-        <div className="card-container">
+        <div className="card-container initial-setup">
             {roomOverlay ? roomOverlayElement : null}
             {networkOverlay ? networkOverlayElement : null}
             {error ? errorOverlayElement : null}
             <div className="card" style={{ maxWidth: '50vw' }}>
                 <h1>VaultTune</h1>
-                <div style={{display: 'flex', flexDirection: 'row', gap: '10px', justifyContent: 'flex-start', alignItems: 'flex-start', maxHeight: '70% !important'}}>
+                <div style={{display: 'flex', flexDirection: 'row', gap: '10px', justifyContent: 'center', alignItems: 'flex-start', maxHeight: '70% !important'}}>
                     <div style={{display: 'flex', alignItems: 'flex-start', flexDirection: 'column', gap: '5px', maxWidth:  "50%", textAlign: 'left', overflowWrap: 'break-word'}}>
                           {stepDescriptions[currentStep]}
                     </div>
-                    <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width:  "50%", textAlign: 'center', margin: '10px'}}>
+                    <div style={{display: 'flex', alignItems: 'center', textAlign: 'center', justifyContent: 'center', flexDirection: 'column', width:  "50%", margin: '10px'}}>
                         {steps[currentStep]}
                     </div>
                     

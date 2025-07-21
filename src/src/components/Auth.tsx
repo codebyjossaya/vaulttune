@@ -6,11 +6,10 @@ import { SideOverlay } from "./SideOverlay";
 type AuthProps = {
     // Add your prop definitions here, for example:
     title?: string;
-    signIn: () => Promise<void>;
-    setAPI: (api: string) => void;
+    signIn: (api: string) => Promise<void>;
 };
 
-export function Auth({ title, signIn, setAPI }: AuthProps) {
+export function Auth({ title, signIn }: AuthProps) {
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | undefined>(undefined);
     const [apiOverlay, setApiOverlay] = useState<boolean>(false);
@@ -35,7 +34,6 @@ export function Auth({ title, signIn, setAPI }: AuthProps) {
                         setError("API URL must start with http:// or https://");
                         return;
                     }
-                    setAPI(apiValue);
                     setAPIVal(apiValue)
                     setApiOverlay(false);
                 }}>Save</button>
@@ -64,7 +62,7 @@ export function Auth({ title, signIn, setAPI }: AuthProps) {
                     <p>using <a onClick={() => setApiOverlay(true)}>{apiVal}</a></p>
                     <button onClick={() => {
                         setLoading(true);
-                        signIn().then(() => {
+                        signIn(apiVal).then(() => {
                             setLoading(false);
                         }).catch((err) => {
                             setError(err.message || "An error occurred during sign in.");

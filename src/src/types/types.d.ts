@@ -9,6 +9,7 @@ export interface Room {
 export interface AuthState {
     authenticated: boolean;
     user?: UserRecord;
+    api?: string;
 
 }
 export type { Options };

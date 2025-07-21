@@ -10,8 +10,8 @@ import type { AuthState } from './types/types';
 function signIn(setAuthState: React.Dispatch<React.SetStateAction<AuthState>>, api: string): Promise<void> {
   return new Promise((resolve, reject) => {
     window.electronAPI?.signIn(api).then((data: AuthState) => {
-      console.log(data);
       setAuthState(data);
+      console.log("Sign in successful:", data);
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       data.authenticated ? resolve() : reject();
     }).catch(reject);
@@ -32,7 +32,11 @@ function PassAuthState({ authState, setAuthState }: { authState: AuthState, setA
 
   useEffect(() => {
     window.electronAPI?.serverSettings().then((settings) => {
-      setSettings(settings);
+      if (settings === undefined) {
+        setSettings(undefined);
+        return;
+      }
+      setSettings({api: authState.api, ...settings});
       console.log("Server settings:", settings);
     }).catch((error) => {
       console.error("Error fetching server settings:", error);
@@ -41,8 +45,9 @@ function PassAuthState({ authState, setAuthState }: { authState: AuthState, setA
   }, []);
 
   const updateSettings = (newSettings: Options) => {
-    setSettings(newSettings);
-    window.electronAPI?.setServerSettings(newSettings).then((success) => {
+    console.log({ ...newSettings});
+    setSettings({ ...newSettings});
+    window.electronAPI?.setServerSettings({...newSettings}).then((success) => {
       if (success) {
         console.log("Server settings updated successfully.");
       } else {
@@ -65,7 +70,6 @@ function PassAuthState({ authState, setAuthState }: { authState: AuthState, setA
 function App() {
   const [authState, setAuthState] = useState<AuthState>({ authenticated: false });
   const [loading, setLoading] = useState<boolean>(true);
-  const [api, setApi] = useState<string>("https://vaulttune.jcamille.tech");
   
   useEffect(() => {
     console.log(window.electronAPI?.ping());
@@ -80,6 +84,6 @@ function App() {
     });
   }, []);
 
-  return authState.authenticated ? ( <PassAuthState authState={authState} setAuthState={setAuthState} />) : loading ? ( <Loading text="Loading authentication state..." /> ) : ( <Auth signIn={() => signIn(setAuthState, api)} title='Sign in to your Vault' setAPI={setApi} /> );
+  return authState.authenticated ? ( <PassAuthState authState={authState} setAuthState={setAuthState} />) : loading ? ( <Loading text="Loading authentication state..." /> ) : ( <Auth signIn={(api) => signIn(setAuthState, api)} title='Sign in to your Vault' /> );
 }
 export default App;
