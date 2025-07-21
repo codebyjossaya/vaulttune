@@ -140,7 +140,7 @@ export default class Server {
         console.log("Generating a random port...");
         const port = Math.floor(Math.random() * (65535 - 1024 + 1)) + 1024;
         try {
-            console.log("Vault server running on port 3000");
+            console.log("Vault server running on port ", port);
             this.httpServer.listen(port);
         } catch (error) {
             if (error instanceof Error && error.message.includes("EADDRINUSE")) {
@@ -152,7 +152,7 @@ export default class Server {
 
         console.log("Obtaining tunnel address...");
         if(this.options.network) {
-            this.address = await getTunnelAddr(this)
+            this.address = await getTunnelAddr(this, port)
             this.tunnel.on('error', (error) => {
                 console.error("Tunnel error:", error);
                 this.state = "error";
