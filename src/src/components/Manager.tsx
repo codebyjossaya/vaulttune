@@ -239,7 +239,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             resizeObserver.disconnect();
         };
     }
-    }, [dimensions, divSize]);
+    }, [dimensions, divSize, loading]);
 
     return loading ? (<Loading text={loading} />) : (
         <>
