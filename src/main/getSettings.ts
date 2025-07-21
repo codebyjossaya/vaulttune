@@ -1,0 +1,29 @@
+import { Options } from "interfaces/types";
+import { server } from "./main";
+import { existsSync } from "fs";
+export function getSettings(): Promise<Options> {
+    return new Promise<Options | undefined>((resolve, reject) => {
+        try {
+            const settingsPath = `${process.env.HOME}/VaultTune/settings/server.json`;
+            console.log(server.rooms)
+            if (existsSync(settingsPath)) {
+                const settings: Options = {
+                    rooms: server.rooms.map(room => ({
+                        id: room.id,
+                        name: room.name,
+                        dirs: room.dirs
+                    })),
+                    network: server.options.network,
+                    name: server.options.name || "Untitled Vault",
+                    api: server.options.api,
+                };
+                resolve(settings);
+            } else {
+                resolve(undefined)
+            }
+        } catch (error) {
+            console.error("Unexpected error in getSettings:", error);
+            reject(error);
+        }
+    });
+}

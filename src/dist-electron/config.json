@@ -1,0 +1,16 @@
+{
+  "name": "Jossaya's Vault",
+  "rooms": [
+    {
+      "name": "Default Room",
+      "id": "room_2025-07-20T08:51:39.679Z_604601",
+      "dirs": [
+        "/home/jossaya/Music"
+      ]
+    }
+  ],
+  "users": [
+    "Jossaya Camille"
+  ],
+  "network": true
+}

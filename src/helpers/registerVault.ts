@@ -4,15 +4,13 @@ export function registerVault(t: Server) {
     return new Promise<void>((resolve, reject) => {
         try {
             const vault_name = t.options.name;
-            const token: string = readFileSync(`${__dirname}/../../settings/auth/vaulttune_token.txt`, "utf-8");
-            console.log("Token: ", token);
             fetch("https://api.jcamille.tech/vaulttune/user/vault/register", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    token,
+                    token: t.options.token,
                     vault_name,
                     tunnel_url: t.address,
                 })

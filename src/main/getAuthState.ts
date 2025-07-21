@@ -1,12 +1,14 @@
-import { existsSync, readFileSync, unlinkSync } from 'fs';
-export function getAuthState(): Promise<boolean> {
+import keytar from 'keytar'
+import { AuthState } from 'src/types/types';
+export function getAuthState(): Promise<AuthState> {
     return new Promise((resolve, reject) => {
-        if(!existsSync(`${__dirname}/../../settings/auth/vaulttune_token.txt`)) {
-            console.log("No authentication token found. Please authenticate first.");
-            resolve(false);
-        } else {
+        keytar.findPassword('vaulttune').then((token) => {
+            if (!token) {
+                console.log("No VaultTune token found in keytar.");
+                resolve({ authenticated: false });
+                return;
+            }
             console.log("Verifying existing VaultTune token...");
-            const token = readFileSync(`${__dirname}/../../settings/auth/vaulttune_token.txt`, 'utf-8');
             fetch(`https://api.jcamille.tech/vaulttune/auth/vault/verifyToken/`, {
                 method: "POST",
                 headers: {
@@ -17,7 +19,7 @@ export function getAuthState(): Promise<boolean> {
                 })
             }).then(async (response: Response) => {
                 if (!response.ok) {
-                    const data: any = await response.json();
+                    const data: { error?: string } = await response.json();
                     if (data.error === "Error: Vault token is required") {
                         console.error("There is an error with the existing VaultTune token. It is either invalid or expired.");
                         reject(false);
@@ -27,23 +29,18 @@ export function getAuthState(): Promise<boolean> {
                         console.error("Failed to verify existing VaultTune token..obtaining a new one");
                     }
                     // Remove the invalid token file
-                    try {
-                        unlinkSync(`${__dirname}/../../settings/auth/vaulttune_token.txt`);
-                        console.log("Invalid VaultTune token removed.");
-                    } catch (err) {
-                        console.error("Failed to remove invalid VaultTune token:", err);
-                        reject(false);
-                    }
                     
                 } else {
-                    const data = await response.json();
+                    const data: { content: object} = await response.json();
                     console.log("Existing VaultTune token verified successfully:", data);
-                    resolve(true);
+                    resolve({ authenticated: true, ...data });
+                    return;
                 }
-            }).catch((error: any) => {
+            }).catch((error) => {
                 console.error("Error verifying existing VaultTune token:", error);
                 reject(false);
             });
-        }
+            
+        });
     });
 }

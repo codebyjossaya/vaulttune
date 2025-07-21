@@ -1,7 +1,7 @@
 import { Socket } from "socket.io";
 import Song from "./song";
 import Playlist from "./playlist";
-import { readdirSync, readFileSync, writeFileSync } from "fs";
+import { readdirSync, writeFileSync } from "fs";
 import { SongStatus } from "../interfaces/types";
 import {watch} from 'chokidar'
 import { basename } from "path";
@@ -10,9 +10,9 @@ import { SongError } from "../interfaces/errors";
 export default class Room {
     public id: string;
     public name: string;
-    public members: Socket[];
-    public songs: Song[] = [];
-    public playlists: Playlist[] = [];
+    public members?: Socket[];
+    public songs?: Song[] = [];
+    public playlists?: Playlist[] = [];
     public dirs: string[] = [];
 
     constructor(name: string, id: string | undefined = undefined, songs: Song[] = [], playlists: Playlist[] = []) {
@@ -109,13 +109,11 @@ export default class Room {
             }),
             dirs: this.dirs
         }
-        writeFileSync(`${__dirname}/../../settings/rooms/${this.name}.json`,JSON.stringify(data));
+        return data;
     }
-    static async fromFile(path: string): Promise<Room> {
-        const data = JSON.parse(readFileSync(`${path}`,`utf-8`));
+    static async fromJSON(data: { songs: Song[]; playlists: Playlist[]; dirs: string[]; name: string; id: string; }): Promise<Room> {
         const songs: Song[] = [];
         const playlists: Playlist[] = [];
-
         for(const song of data.songs) {
             songs.push(await Song.create(SongStatus.SYSTEM, null, {path: song.path, id: song.id}));
         }

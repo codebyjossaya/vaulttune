@@ -2,7 +2,7 @@ import { IPicture } from "music-metadata/lib";
 import Song from "./song";
 
 export default class Playlist {
-    private songs: Song[]
+    public songs: Song[]
     public name: string;
     public album_cover: IPicture;
     public id: string;

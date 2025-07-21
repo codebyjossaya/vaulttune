@@ -24,15 +24,13 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     const buf = song!.getBuffer();
 
     t.rpc.setActivity({
-        // @ts-expect-error
-        type: 2,
         details: `Playing ${song.metadata.common.title}`,
         state: `by ${song.metadata.common.artist}`,
         startTimestamp: new Date(),
         instance: false,
     })
     let chunkSize = (buf.byteLength / song.metadata.format.duration) * 5
-    let total_chunks = Math.ceil(buf.byteLength / chunkSize);
+    const total_chunks = Math.ceil(buf.byteLength / chunkSize);
     let timeoutId: NodeJS.Timeout | null = null;
     console.log(`Song: ${song.metadata.common.title} by ${song.metadata.common.artist} with a chunk size of ${chunkSize} and bytelength of ${buf.byteLength} making ${total_chunks} total chunks`)
     console.log("Exporting song data");

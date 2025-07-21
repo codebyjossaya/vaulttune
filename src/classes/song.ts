@@ -1,15 +1,15 @@
 import {IAudioMetadata, parseBlob, parseBuffer } from 'music-metadata'
 import { readFileSync, writeFileSync } from 'fs'
-import { Options, SongStatus } from '../interfaces/types'
+import { SongOptions, SongStatus } from '../interfaces/types'
 import { SongError } from '../interfaces/errors';
 import { existsSync } from 'fs';
 export default class Song {
     public path;
     public metadata: IAudioMetadata;
     public id: string;
-    public buffer: ArrayBuffer
+    public buffer: Buffer<ArrayBufferLike>
     public size: number;
-    private constructor(path: string, metadata: IAudioMetadata, buffer: ArrayBuffer, id: string | undefined = undefined) {
+    private constructor(path: string, metadata: IAudioMetadata, buffer: Buffer<ArrayBufferLike>, id: string | undefined = undefined) {
         this.path = path;
         this.metadata = metadata;
         this.buffer = buffer;
@@ -20,7 +20,7 @@ export default class Song {
         this.id = (id === undefined) ? `song_${timestamp}_${random}` : id;
     }
 
-    static async create(status: SongStatus, blob: Blob | null, options: Options): Promise<Song> {
+    static async create(status: SongStatus, blob: Blob | null, options: SongOptions): Promise<Song> {
         if (status === SongStatus.SYSTEM) {
             // Check if the file exists at the given path
             if (!existsSync(options.path!)) {
@@ -62,7 +62,8 @@ export default class Song {
             ) {
                 throw new SongError("No metadata found in the uploaded song");
             }
-            const buffer = await blob.arrayBuffer()
+            const uint8Array = await blob.bytes();
+            const buffer = Buffer.from(uint8Array);
             const title = metadata.common.title|| 'Unknown_Title_UPLOADED'; // Default title if none exists
             const sanitizedTitle = title.replace(/[\\/:*?"<>|]/g, '_'); // Replace invalid filename characters
             metadata.common.title = sanitizedTitle;
@@ -74,7 +75,7 @@ export default class Song {
             }
             
             const filePath = `${options.path!}/${sanitizedTitle}_UPLOADED.${extension}`;
-            writeFileSync(filePath, new DataView(buffer));
+            writeFileSync(filePath, buffer);
             return new Song(
                 `${options.path!}/${sanitizedTitle}.${metadata.format.container}`,
                 metadata,

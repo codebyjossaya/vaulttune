@@ -7,9 +7,11 @@
   border: 2pt solid #ffffff;
   color: inherit;
   opacity: 0.8;
-  padding: 2pt
+  padding: 8pt; /* Increased padding for a larger input field */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.2em; /* Increased font size */
 }
-.text_input:focus {
+.text-input:focus {
   opacity: 1;
 }
 
@@ -190,7 +192,7 @@ margin-bottom: 0;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  position: absolute;
+  position: absolute;;
   bottom: 0;
   left: 0;
   right: 0;
@@ -200,7 +202,7 @@ margin-bottom: 0;
   overflow-y: auto;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
-  height: 80vh;
+  height: 70vh;
   max-height: 80vh;
   transition: height 0.3s ease;
   animation: show 600ms 100ms cubic-bezier(0.38, 0.97, 0.56, 0.76) forwards;
@@ -215,8 +217,19 @@ margin-bottom: 0;
       transform: translateY(20px);
     }
   }
+}
 
-  
+.mini-player-card > .player-card {
+  padding: 1em; /* Adjust padding as needed */
+  width: 100% !important;
+  height: 90%;
+  margin: 0 auto; /* Center the player card */
+  border-radius: 10px; /* Add rounded corners */
+  position: relative;
+}
+
+.mini-player-card {
+  width: 100%;
 }
 
 .side-overlay {
@@ -255,6 +268,7 @@ margin-bottom: 0;
 .panel-base {
   height: 100%;
   background: rgb(36, 35, 35);
+  padding: 2em;
   box-shadow: -2px 0 8px rgba(0,0,0,0.1);
   transition: transform 0.3s;
   position: relative;

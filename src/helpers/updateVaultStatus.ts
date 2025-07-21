@@ -2,7 +2,7 @@ import * as VaultTuneServer from "../classes/server";
 
 export default function updateVaultStatus(t: VaultTuneServer.default, status: string): Promise<string | Error> {
     return new Promise((resolve, reject) => {
-
+        console.log("Updating VaultTune status to", status);
         fetch("https://api.jcamille.tech/vaulttune/vault/status", {
             method: "POST",
             headers: {
@@ -19,6 +19,7 @@ export default function updateVaultStatus(t: VaultTuneServer.default, status: st
                 return;
             } else {
                 console.log("VaultTune status updated to ", status);
+                t.state = status === "online" ? "online" : status === "offline" ? "offline" : "error";
                 resolve("success");
             }
         }).catch(error => {
