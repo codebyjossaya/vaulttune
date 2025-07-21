@@ -137,9 +137,17 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
     let counter = 0;
     if (socket) {
       socket.on('connect_error', () => {
+        setLoading("Reconnecting to vault...");
         counter += 1;
+        console.log("connection error")
         if (counter > 5) {
 
+          console.log("Killing socket connection due to repeated errors")
+          setError("Cannot connect to the Vault")
+          setLoading(false);
+          socket.disconnect();
+          setSocket(null);
+          fetchVaults();
         }
       });
       socket.on('connect', () => {
@@ -150,19 +158,12 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
         if (error === "Room does not exist") window.location.reload();
         else setError(error);
       })
-      socket.on('disconnect', (reason: any) => {
+      socket.on('disconnect', (reason: string) => {
             console.log("disconnected", reason)
             setConnected(false);
             setLoading(false);
       })
-        
-      socket.on('connect_error', () => {
-          console.log("connection error, killing socket")
-          setError("Cannot connect to the Vault")
-          setLoading(false);
-          setSocket(null);
-      })
-    } 
+        } 
   }, [socket])
 
   useEffect(() => {

@@ -19,6 +19,7 @@ export const SideOverlay: React.FC<SideOverlayProps> = ({
 
     React.useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+        console.log(checkMobile());
         checkMobile();
         window.addEventListener("resize", checkMobile);
         return () => window.removeEventListener("resize", checkMobile);
@@ -32,6 +33,8 @@ export const SideOverlay: React.FC<SideOverlayProps> = ({
             style={{
                 alignItems: isMobile ? "flex-end" : "stretch",
                 justifyContent: isMobile ? "center" : "flex-end",
+                
+                
             }}
             onClick={onClose}
         >
@@ -50,6 +53,7 @@ export const SideOverlay: React.FC<SideOverlayProps> = ({
                         : isMobile
                         ? "translateY(100%)"
                         : "translateX(100%)",
+                    width: isMobile ? "100%" : "50vw",
                 }}
                 onClick={e => e.stopPropagation()}
             >
@@ -57,7 +61,6 @@ export const SideOverlay: React.FC<SideOverlayProps> = ({
                     onClick={onClose}
                     style={{
                         position: "absolute",
-                        top: 16,
                         right: 16,
                         background: "gray",
                         border: "none",
@@ -69,6 +72,7 @@ export const SideOverlay: React.FC<SideOverlayProps> = ({
                     &times;
                 </button>
                 {children}
+                
             </div>
         </div>
     );

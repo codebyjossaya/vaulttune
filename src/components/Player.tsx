@@ -20,9 +20,9 @@ enum UploadStates {
 
 const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
-  const [room, joinRoom] = useState< Room | null>(null)
+  const [room, joinRoom] = useState< Room | null>(null);
   const [rooms, setRooms] = useState<Room[] >([])
-  const [songs, setSongs] = useState<Song[]>([])
+  const [songs, setSongs] = useState<Song[] | null>(null)
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [uploadDialog, enableUploadDialog] = useState<boolean>(false);
   const [uploadState, setUploadState] = useState<UploadStates>(UploadStates.NO_UPLOAD);
@@ -111,7 +111,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     if (currentlyPlaying) {
         if (currentlyPlaying.id == song.id) return;
         else {
-            (isOniOS(window) ? null : socket.emit("stop song", currentlyPlaying.id));
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+            isOniOS(window) ? null : socket.emit("stop song", currentlyPlaying.id);
             socket.removeAllListeners(`song data ${currentlyPlaying.id}`);
         }
     }
@@ -187,9 +188,13 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     }, [currentPlaylist]);
 
     useEffect(() => {
-
-        socket.emit('get rooms')
+        console.log("hi");
         socket.on('available rooms', (data: Room[]) => setRooms(data))
+        if (!rooms || rooms.length === 0) {
+            console.log("No rooms available, requesting from server");
+            socket.emit('get rooms');
+        }
+        
         socket.on('songs', (songs: Song[]) => {
             setSongs(songs);
             console.log("Received songs:", songs);
@@ -199,20 +204,28 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         // freezes right after joining a room, eventually unfreezes.
         socket.on('status', (state: string) => {
             console.log("New state received:", state);
-            // target THIS. get rid of rooms in dependency array.
-            if (state.includes('Joined room ')) joinRoom(rooms.find(room => room.id === state.substring(12,state.length))!)
+            // Extract room ID from the state string
+            if (state.startsWith('Joined room ')) {
+            const joinedRoomId = state.substring('Joined room '.length);
+            // rooms state is up to date, so just find the room directly
+            const foundRoom = rooms.find(room => room.id === joinedRoomId);
+            console.log("Found room:", foundRoom);
+            if (foundRoom) {
+                joinRoom(foundRoom);
+            }
+            }
             else if (state === 'Song successfully uploaded') {
-                console.log("Upload success")
-                setUploadState(UploadStates.SUCCESS);
-                setTimeout(() => {
-                    setUploadState(UploadStates.NO_UPLOAD);
-                    enableUploadDialog(false);
-                },2000)
+            console.log("Upload success")
+            setUploadState(UploadStates.SUCCESS);
+            setTimeout(() => {
+                setUploadState(UploadStates.NO_UPLOAD);
+                enableUploadDialog(false);
+            },2000)
             }
             else if(state.includes(`Left room`)) {
-                setCurrentlyPlaying(null);
-                joinRoom(null);
-                setSongs([]);
+            setCurrentlyPlaying(null);
+            joinRoom(null);
+            setSongs([]);
             };
             console.log("State changed to:", state);
         });
@@ -222,7 +235,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             socket.removeAllListeners('playlists');
             socket.removeAllListeners('status');
         }
-    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    },[socket.connected,rooms]);
 
     useEffect(() => {
 
@@ -246,7 +260,6 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             setError("There was an error. View the error here: " + error)
         });
 
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         return () => {
             socket.removeAllListeners('song data - iOS');
             socket.removeAllListeners('song playlist - iOS');
@@ -288,16 +301,20 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         )}`;
 
                         navigator.mediaSession.metadata = new MediaMetadata({
-                        title: song!.metadata.common.title || '',
-                        artist: song!.metadata.common.artist || '',
-                        album: song!.metadata.common.album || '',
-                        artwork: [
-                            {
-                            src: base64Image,
-                            type: picture.format, // e.g., 'image/jpeg'
-                            sizes: '512x512' // or whatever the actual size is
-                            }
-                        ]
+                            title: song!.metadata.common.title || '',
+                            artist: song!.metadata.common.artist || '',
+                            album: song!.metadata.common.album || '',
+                            artwork: [
+                                {
+                                src: base64Image,
+                                type: picture.format, // e.g., 'image/jpeg'
+                                sizes: '512x512' // or whatever the actual size is
+                                }
+                            ]
+                        });
+                        navigator.mediaSession.setActionHandler('nexttrack', () => {
+                            audioRef.current!.currentTime = audioRef.current!.duration;
+                            console.log("Next track action handler called, skipping to end of song");
                         });
                     }
                 }
@@ -305,7 +322,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 // prepare the audio element for playback
                 if (audioRef.current) {
                     sourceRef.current = new MediaSource();
-                    let source = sourceRef.current;
+                    const source = sourceRef.current;
                     audioRef.current.src = URL.createObjectURL(source);
                     
 
@@ -363,18 +380,15 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 
                 }   
             }
-            console.log("Song data start listener registered");
+            // console.log("Song data start listener registered");
             socket.on('song data start', songDataListener);
             return () => {
-                console.log("Removing song data start listener");
+                // console.log("Removing song data start listener");
                 socket.removeListener("song data start", songDataListener);
             }
         });
 
         useEffect(() => {
-            setInterval(() => {
-                console.log("tick");
-            }, 1000);
             if(currentlyPlaying) {
                 playerRef.current!.style.height = `calc(${isOniOS(window) ? `${0.8 * window.innerHeight}px` : "80vh" } - ${playingRef.current!.offsetHeight}px)`
                 // add multiple artists if needed
@@ -398,7 +412,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 
             }
             
-        },[currentlyPlaying, playerRef.current])
+        },[currentlyPlaying])
 
     // handles appending buffers and detect when end of song is reached
     
@@ -589,57 +603,58 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     <button onClick={() => setSelector("SONGS")}>Songs</button>
                     <button onClick={() => setSelector("PLAYLISTS")}>Playlists</button>
                 </div>
-                {selector == "SONGS" ? songs.map((song) => {
-                    const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
-                    const picture = song.metadata.common.picture;
-                    // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
-                    let string_char;
-                    if(picture) {
-                        const coverArr = new Uint8Array(picture[0].data);
-                        string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
-                    }
-                    const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
-                    return (
-                        <div className='player-list-item' key={song.id} onClick={() => {
-                            playSong(song);
-                            setPlaylistView(null); // close playlist view when a song is played
-                            if (currentPlaylist) {
-                                setCurrentPlaylist(null); // reset current playlist when a song is played
-                            }
-                            if (nextUp) {
-                                setNextUp(null); // reset next up when a song is played
-                            }
-                            }}>
-                            {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
-                            <p className='song-title'>{song.metadata.common.title}</p>
-                            <p className='song-artist'>{song.metadata.common.artist}</p>
-                            <p className='song-duration'>{song_duration}</p>
+                {selector == "SONGS" && songs ? 
+                    songs.length < 1 ? <p>No songs found</p> : songs.map((song) => {
+                        const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
+                        const picture = song.metadata.common.picture;
+                        // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
+                        let string_char;
+                        if(picture) {
+                            const coverArr = new Uint8Array(picture[0].data);
+                            string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
+                        }
+                        const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
+                        return (
+                            <div className='player-list-item' key={song.id} onClick={() => {
+                                playSong(song);
+                                setPlaylistView(null); // close playlist view when a song is played
+                                if (currentPlaylist) {
+                                    setCurrentPlaylist(null); // reset current playlist when a song is played
+                                }
+                                if (nextUp) {
+                                    setNextUp(null); // reset next up when a song is played
+                                }
+                                }}>
+                                {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
+                                <p className='song-title'>{song.metadata.common.title}</p>
+                                <p className='song-artist'>{song.metadata.common.artist}</p>
+                                <p className='song-duration'>{song_duration}</p>
 
-                        </div>
-                    );
-                }) : playlists.map((playlist) => {
-                    const picture = playlist.album_cover;
-                    // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
-                    let string_char;
-                    if(picture) {
-                        const coverArr = new Uint8Array(picture.data);
-                        string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
-                    }
-                    const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
-                    return (
-                        <div className='player-list-item' key={playlist.id} onClick={() => {
-                            setPlaylistView(playlist);}}>
-                            {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
-                            <p className='song-title'>{playlist.name}</p>
-                        </div>
-                    );
-                })}
+                            </div>
+                        );
+                    }) : playlists.length < 1 ? <p>No playlists found</p> : playlists.map((playlist) => {
+                        const picture = playlist.album_cover;
+                        // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
+                        let string_char;
+                        if(picture) {
+                            const coverArr = new Uint8Array(picture.data);
+                            string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
+                        }
+                        const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
+                        return (
+                            <div className='player-list-item' key={playlist.id} onClick={() => {
+                                setPlaylistView(playlist);}}>
+                                {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
+                                <p className='song-title'>{playlist.name}</p>
+                            </div>
+                        );
+                    })}
                 
             </div>
         </div>
     );
 
-    return room !== null ? ( songs.length > 0 ? player : <Loading text='Getting songs...'  />) : rooms.length == 0 ? <Loading text="Getting rooms.." /> : (
+    return room !== null ? ( songs ? player : <Loading text='Getting songs...'  />) : rooms.length == 0 ? <Loading text="Getting rooms.." /> : (
         <div className='card-container'>
             <div className="card">
                     <h1>VaultTune</h1>
