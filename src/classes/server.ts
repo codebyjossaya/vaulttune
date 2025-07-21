@@ -25,6 +25,7 @@ import { writeFileSync, existsSync, mkdirSync } from "fs";
 import type Song from "./song";
 import type Playlist from "./playlist";
 import keytar from "keytar";
+import { ipcMain } from "electron";
 
 
 export default class Server {
@@ -61,6 +62,7 @@ export default class Server {
 
         this.io.on('connection', (socket: Socket) => {
             console.log(`Device ${socket.id} has connected to the server`)
+            ipcMain.emit('device-connected', socket.id);
             socket.emit("status","Connection recieved");
             socket.on('get rooms', () => {
                 console.log(`Device ${socket.id} requested available rooms`);
@@ -128,14 +130,34 @@ export default class Server {
         this.rooms.push(room);
     }
 
+    error() {
+        ipcMain.emit('server-error', 'An error occurred in the server');
+    }
+
     async start() {
         this.options.token = await keytar.getPassword("vaulttune", "token");
         console.log("Starting Vault...");
-        console.log("Vault server running on port 3000");
-        this.httpServer.listen(3000);
+        console.log("Generating a random port...");
+        const port = Math.floor(Math.random() * (65535 - 1024 + 1)) + 1024;
+        try {
+            console.log("Vault server running on port 3000");
+            this.httpServer.listen(port);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes("EADDRINUSE")) {
+                console.log("port already in use, trying to find another port...");
+                this.start(); // Retry starting the server
+                return;
+            }
+        }
+
         console.log("Obtaining tunnel address...");
         if(this.options.network) {
             this.address = await getTunnelAddr(this)
+            this.tunnel.on('error', (error) => {
+                console.error("Tunnel error:", error);
+                this.state = "error";
+                this.error();
+            });
             console.log("This Vault's address: ", this.address);
         } else {
             await new Promise((resolve, reject) => {

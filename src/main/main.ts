@@ -22,8 +22,10 @@ const start = async () => {
         console.log("No server settings found, using default settings.");
     }
     const win = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: 535,
+        height: 894,
+        minWidth: 535,
+        minHeight: 894,
         webPreferences: {
             contextIsolation: true,
             preload: path.join(__dirname, '../preload/preload.js'),

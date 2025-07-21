@@ -32,8 +32,9 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, api: string = 'h
                 }
                 if (api) {
                     server.options.api = api;
+                    console.log("Server API set to:", server.options.api);
                 }
-                console.log("Server API set to:", server.options.api);
+                
                 fetch(`${server.options.api}/vaulttune/auth/vault/getToken/`, {
                     method: "POST",
                     headers: {

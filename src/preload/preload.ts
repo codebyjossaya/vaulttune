@@ -15,3 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stopServer: () => ipcRenderer.invoke('stop-server'),
   promptForFolder: () => ipcRenderer.invoke('prompt-for-folder'),
 });
+
+ipcRenderer.on('error', (event, ...args) => {
+  console.log('Received error event:', event, args);
+});

@@ -3,8 +3,9 @@ import { Loading } from './Loading';
 import { Header } from './Header';
 import type { Options, Room, AuthState } from '../types/types';
 import { SideOverlay } from './SideOverlay';
+import Notification from './Notification';
 export function Manager({settings, setSettings, authState, signOut}: {settings: Options, setSettings: (settings: Options) => void, authState: AuthState, signOut: () => void}) {
-    const headerRef = useRef<HTMLDivElement>(null);
+    
     const [selector, setSelector] = useState<"GENERAL" | "ROOMS" | "USERS">("GENERAL");
     const [vaultStatus, setVaultStatus] = useState<"online" | "offline" | "error">("offline");
     const [toggleVault, setToggleVault] = useState<boolean>(false);
@@ -17,7 +18,13 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const [loading, setLoading] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [signOutOverlay, setSignOutOverlay] = useState<boolean>(false);
-    
+    const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: window.innerWidth, height: window.innerHeight });
+    const [divSize, setDivSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning'; } | null>(null);
+    const infoRef = useRef<HTMLDivElement>(null);
+    const playerCardRef = useRef<HTMLDivElement>(null);
+    const headerRef = useRef<HTMLDivElement>(null);
+
     function changeSettings() {
         console.log("Changing settings...");
         if (!settings) {
@@ -202,8 +209,41 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
                 </div>
         </div>
     );
+
+    useEffect(() => {
+        const handleResize = () => {
+            setDimensions({ width: window.innerWidth, height: window.innerHeight });
+        };
+        window.addEventListener('resize', handleResize);
+        handleResize(); // Set initial dimensions
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (infoRef.current && playerCardRef.current && headerRef.current) {
+            const headerPlayerDistance = Math.abs(headerRef.current.getBoundingClientRect().bottom - playerCardRef.current.getBoundingClientRect().top);
+            infoRef.current.style.height = headerPlayerDistance + 'px';
+            for (const child of infoRef.current.children) {
+                (child as HTMLElement).style.marginTop = '0px';
+            }
+            const resizeObserver = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                const { width, height } = entry.contentRect;
+                setDivSize({ width, height });
+            }
+        });
+        resizeObserver.observe(playerCardRef.current);
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }
+    }, [dimensions, divSize]);
+
     return loading ? (<Loading text={loading} />) : (
         <>
+        {notification ? <Notification message={notification.message} type={notification.type} dismiss={() => setNotification(null)} /> : null}
         {signOutOverlay ? signOutOverlayElement : null}
         {error ? errorOverlayElement : null}
         {roomEditOverlay ? roomEditOverlayElement : null}
@@ -211,9 +251,14 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             <p>{authState.user?.displayName}</p>
             <button className='danger' onClick={() => setSignOutOverlay(true)}>Sign out</button>
         </Header>
-        <h1>{currentVaultName}</h1>
-        <p>Manage your vault</p>
-        <div className="player-card" style={{alignItems: 'left'}}>
+        <div ref={infoRef} className="info">
+            <div>
+                <h1>{currentVaultName}</h1>
+                <p>Manage your vault</p>
+            </div>
+            
+        </div>
+        <div ref={playerCardRef} className="player-card" style={{alignItems: 'left'}}>
             <div className='switcher'>
                     <button onClick={() => setSelector("GENERAL")}
                         style={{ backgroundColor: selector === "GENERAL" ? '#ffffff' : 'transparent', color: selector === "GENERAL" ? '#000000' : '#ffffff' }}>
