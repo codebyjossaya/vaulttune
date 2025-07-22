@@ -432,6 +432,31 @@ export class Server {
                     res.status(400).json({status: "failed", error: error.message});
                 }
             });
+
+            this.app.post('/vaulttune/vault/cancelRequest', async (req: express.Request, res: express.Response) => {
+                console.log(`Request to cancel Vault request received`)
+                try {
+                    const { vault_token, user_email } = req.body;
+                    if (!vault_token || !user_email) {
+                        throw new Error("Vault token and user email are required");
+                    }
+                    console.log(`Authenticating Vault...`)
+                    const server_token = verifyServer(vault_token);
+                    console.log(`Vault ${server_token.id} authenticated! Cancelling request for user ${user_email}`)
+                    // Get the user by email
+                    const userRecord = await this.auth.getUserByEmail(user_email);
+                    // Get reference to the user's vault requests in the database
+                    const userVaultRef = this.database.ref(`/users/${userRecord.uid}/vaults/requests/${server_token.id}`);
+                    const requestRef = this.database.ref(`/vaults/${server_token.id}/requests/${userRecord.uid}`);
+                    // Remove the request
+                    await userVaultRef.remove();
+                    await requestRef.remove();
+                    res.json({status: "success", message: `Request for user ${user_email} to join the Vault cancelled`});
+                } catch (error: any) {
+                    console.log(error)
+                    res.status(400).json({status: "failed", error: error.message});
+                }
+            });
             this.app.post('/vaulttune/user/vault/requests', async (req: express.Request, res: express.Response) => {
                 console.log(`Request to retrieve Vault requests received`)
                 try {
