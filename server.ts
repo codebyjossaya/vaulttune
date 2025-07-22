@@ -319,6 +319,7 @@ export class Server {
                     }
                     const data = snapshot.val();
                     data.requests = null;
+                    console.log(data);
                     const vaults: Vault[] = Object.values(data);
                     
                     console.log(`User ${user_token_data.uid} has the following Vaults:`, vaults);
