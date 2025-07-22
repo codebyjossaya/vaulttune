@@ -406,8 +406,10 @@ export class Server {
                     const request = {
                         vault_id: server_token.id,
                         owner: server_token.user,
+                        email: user_email,
                         vault_name: vaultData.vault_name,
-                        status: "pending"
+                        status: "pending",
+                        created_at: new Date().toISOString(),
                     }
                    
 
