@@ -108,7 +108,7 @@ function App() {
             console.log(text);
             return text;
           });
-        }
+        } 
         setUser(user);
       } else {
         console.log("No user is signed in.");

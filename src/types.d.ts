@@ -1,6 +1,7 @@
 import { User } from "firebase/auth";
 import { IAudioMetadata, IPicture } from "music-metadata/lib";
 import { Socket } from "socket.io-client";
+import { User } from "firebase/auth";
 export interface Song {
     metadata: IAudioMetadata;
     id: string;
@@ -39,4 +40,13 @@ export interface PlayerConfig {
     user: User | null;
     vault: Vault | undefined;
     signOut: () => Promise<void>;
+}
+
+export interface PendingRequest {
+    vault_id: string;
+    owner: User;
+    email: string;
+    vault_name: string;
+    status: "pending" | "accepted" | "rejected";
+    created_at: string;
 }

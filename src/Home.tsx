@@ -4,7 +4,7 @@ import { Loading } from './components/Loading';
 import { Overlay } from './components/Overlay';
 import VaultTunePlayer from './components/Player';
 import { User } from 'firebase/auth';
-import { Vault } from './types';
+import { PendingRequest, Vault } from './types';
 import { SideOverlay } from './components/SideOverlay';
 
 
@@ -17,9 +17,35 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [currentVault, setCurrentVault] = useState<Vault | undefined>(undefined);
   const [sideOverlay, setSideOverlay] = useState<React.ReactElement | null>(null);
+  const [receivedInvites, setReceivedInvites] = useState<PendingRequest[]>([]); // Adjust type as needed
+  const [receivedInvitesOverlay, setReceivedInvitesOverlay] = useState<boolean>(false);
   // const headerRef = useRef<HTMLDivElement>(null);
   // const socketRef = useRef<Socket | undefined>(socket);
   // needs to only exist within this scope
+
+  async function fetchReceivedInvites() {
+
+    fetch("https://api.jcamille.tech/vaulttune/user/vault/requests", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user_token: await user?.getIdToken() }),
+    }).then(async (response) => {
+    if (!response.ok) {
+        console.error("Failed to fetch received invites:", response.statusText);
+        setError(`Failed to fetch received invites: ${response.statusText}`);
+        return;
+      }
+      const data = await response.json();
+      console.log("Received invites fetched successfully:", data);
+      setReceivedInvites(data.requests || []);
+      // You can handle the user data here if needed
+    }).catch((error) => {
+      console.error("Error fetching received invites:", error);
+      setError("Failed to fetch received invites");
+    });
+  }
   async function fetchVaults() {
     setLoading("Getting vaults...");
     fetch("https://api.jcamille.tech/vaulttune/user/vaults/get", {
@@ -133,6 +159,43 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       </SideOverlay>
     ));
   }
+
+  async function handleInvite(vaultId: string, action: "accept" | "decline") {
+    if (!vaultId) {
+      setError("Vault ID is required to accept an invite");
+      return;
+    }
+    if (!action || (action !== "accept" && action !== "decline")) {
+      setError("Invalid action specified for invite handling");
+      return;
+    }
+    setLoading(`Handling invite: ${action}ing...`);
+    fetch(`https://api.jcamille.tech/vaulttune/user/vault/handleRequest`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_token: await user!.getIdToken(),
+        vault_id: vaultId,
+        action,
+      }),
+    }).then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to accept invite: ${response.statusText}`);
+      }
+      return response.json();
+    }).then(data => {
+      console.log("Invite accepted successfully:", data);
+      // Refresh the received invites list after accepting
+      fetchReceivedInvites();
+      setLoading(false);
+      setReceivedInvitesOverlay(false);
+    }).catch(error => {
+      console.error("Error accepting invite:", error);
+      setError(`Failed to accept invite: ${error.message}`);
+    });
+  }
   useEffect(() => { 
     let counter = 0;
     if (socket) {
@@ -164,13 +227,16 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
             setLoading(false);
       })
         } 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket])
 
   useEffect(() => {
     if (user) {
       fetchVaults();
+      fetchReceivedInvites();
     }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   useEffect(() => {
@@ -181,12 +247,33 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
     }
   }, [])
 
+  const receivedInvitesOverlayElement = (
+    <>
+      <SideOverlay isOpen={receivedInvitesOverlay} onClose={() => setReceivedInvitesOverlay(false)}>
+        <h2>Pending Invites</h2>
+        <div className='mini-player-card'>
+          <div className='player-card'>
+            {receivedInvites.map((invite) => (
+            <div className='player-list-item' key={invite.owner.uid}>
+              <span>{invite.owner.displayName} invited you to join {invite.vault_name}</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
+                <button onClick={() => handleInvite(invite.vault_id, "accept")}>Accept</button>
+                <button onClick={() => handleInvite(invite.vault_id, "decline")} className='danger'>Decline</button>
+              </div>
+            </div>
+          ))}
+          </div>
+        </div>
 
+      </SideOverlay>
+    </>
+  );
   return socket && connected ? <VaultTunePlayer config={{ socket, user, vault: currentVault, signOut }} /> : (
     <>
-    {
-      sideOverlay ? sideOverlay : null
-    }
+    {sideOverlay ? sideOverlay : null}
+    {receivedInvitesOverlay ? receivedInvitesOverlayElement : null}
+
+
     {error ?  (
                 <Overlay>
                     <h1>There was an error</h1>
@@ -199,6 +286,12 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
           <h1>VaultTune</h1>
           {loading ? <Loading text={loading} /> : ( 
             <>
+                {receivedInvites.length > 0 ? (
+                  <>
+                  <a onClick={() => setReceivedInvitesOverlay(true)}>View {receivedInvites.length} pending invites</a>
+                  <hr />
+                  </>
+                ) : null}
                 <h3>Your vaults</h3>
                 <div className='list'>
                   {vaults.map((vault) => (
