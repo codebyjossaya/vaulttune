@@ -317,7 +317,10 @@ export class Server {
                         ;
                         return;
                     }
-                    const vaults: Vault[] = Object.values(snapshot.val());
+                    const data = snapshot.val();
+                    data.requests = null;
+                    const vaults: Vault[] = Object.values(data);
+                    
                     console.log(`User ${user_token_data.uid} has the following Vaults:`, vaults);
                     console.log(`Adding status to vaults...`)
                     // Add status to each vault
