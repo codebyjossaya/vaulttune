@@ -320,7 +320,14 @@ export class Server {
                     const data = snapshot.val();
                     data.requests = null;
                     console.log(data);
-                    const vaults: Vault[] = Object.values(data);
+                    const filteredData = Object.values(data).filter((vault) => vault !== null);
+                    if (filteredData.length === 0) {
+                        console.error(`User ${user_token_data.uid} has no vaults`)
+                        res.json({status: "success", vaults: []});
+                        ;
+                        return;
+                    }
+                    const vaults: Vault[] = filteredData as Vault[];
                     
                     console.log(`User ${user_token_data.uid} has the following Vaults:`, vaults);
                     console.log(`Adding status to vaults...`)
