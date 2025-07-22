@@ -511,7 +511,7 @@ export class Server {
                         });
                         const userRequestRef = this.database.ref(`/users/${user_token_data.uid}/vaults/requests/${vault_id}`);
                         const requestRef = this.database.ref(`/vaults/${vault_id}/requests/${user_token_data.uid}`);
-                        await requestRef.child('status').set('accepted');
+                        await requestRef.remove();
                         await userRequestRef.remove();
                         res.json({status: "success", message: `User ${user_token_data.uid} added to Vault ${vault_id}`});
                     }
