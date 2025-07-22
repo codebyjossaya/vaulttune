@@ -470,7 +470,7 @@ export class Server {
                     const requests: any[] = Object.values(snapshot.val());
                     console.log(`User ${user_token_data.uid} has the following Vault requests:`, requests);
                     // Find the request for the specified vault ID
-                    const request = requests.find((req: any) => req.id === vault_id);
+                    const request = requests.find((req: any) => req.vault_id === vault_id);
                     if (!request) {
                         throw new Error("Vault request not found");
                     }
