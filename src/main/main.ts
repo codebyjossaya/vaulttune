@@ -125,9 +125,9 @@ ipcMain.handle('get-users', () => {
             }, body: JSON.stringify({
                 vault_token: server.options.token,
             })
-        }).then(response => {
+        }).then(async (response) => {
             if (!response.ok) {
-                throw new Error("Failed to fetch users");
+                throw new Error("Failed to fetch users" + await response.text());
             }
             return response.json();
         }).then((data: User[]) => {
@@ -153,9 +153,9 @@ ipcMain.handle('get-pending-requests', () => {
             body: JSON.stringify({
                 vault_token: server.options.token,
             })
-        }).then(response => {
+        }).then(async response => {
             if (!response.ok) {
-                throw new Error("Failed to fetch pending requests");
+                throw new Error("Failed to fetch pending requests" + await response.text());
             }
             return response.json();
         }).then((data: PendingRequest[]) => {
@@ -195,6 +195,39 @@ ipcMain.handle('invite-user', (event, email) => {
             reject(error);
         });
     });
+});
+
+ipcMain.handle('cancel-request', async (event, email) => {
+    try {
+        const response = await fetch(`${server.options.api}/vaulttune/vault/cancelRequest`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                vault_token: server.options.token,
+                user_email: email,
+            })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Failed to cancel request:", errorData);
+            return Promise.reject(errorData);
+        }
+        const data = await response.json();
+        console.log("Request cancelled successfully:", data);
+        return data;
+    } catch (error) {
+        console.error("Error cancelling request:", error);
+        return Promise.reject(error);
+    }
+});
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        server.stop().then(() => {
+            console.log("Server stopped successfully.");
+        })
+    };
 });
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {

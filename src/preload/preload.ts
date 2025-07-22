@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   signOut: () => ipcRenderer.invoke('sign-out'),
   getUsers: () => ipcRenderer.invoke('get-users'),
   getPendingRequests: () => ipcRenderer.invoke('get-pending-requests'),
+  cancelRequest: (email: string) => ipcRenderer.invoke('cancel-request', email),
   inviteUser: (email: string) => ipcRenderer.invoke('invite-user', email),
   serverStatus: () => ipcRenderer.invoke('server-status'),
   serverSettings: () => ipcRenderer.invoke('get-server-settings'),

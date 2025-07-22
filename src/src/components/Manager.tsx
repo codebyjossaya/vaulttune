@@ -9,7 +9,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const [selector, setSelector] = useState<"GENERAL" | "ROOMS" | "USERS">("GENERAL");
     const [vaultStatus, setVaultStatus] = useState<"online" | "offline" | "error">("offline");
     const [toggleVault, setToggleVault] = useState<boolean>(false);
-    const [roomEditOverlay, setRoomEditOverlay] = useState<Room | undefined>(undefined);
+    const [roomOverlay, setRoomOverlay] = useState<Room | null | undefined>(undefined);
     const [roomName, setRoomName] = useState<string>("");
     const [currentVaultName, setCurrentVaultName] = useState<string>(settings.name || "Untitled Vault");
     const [vaultName, setVaultName] = useState<string>(settings.name || "Untitled Vault");
@@ -21,7 +21,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: window.innerWidth, height: window.innerHeight });
     const [divSize, setDivSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning'; } | null>(null);
-    const [loadingOverlay, setLoadingOverlay] = useState<boolean>(false);
+    const [loadingOverlay, setLoadingOverlay] = useState<string | false>(false);
     const [usersOverlay, setUsersOverlay] = useState<boolean>(false);
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
     const [requestsOverlay, setRequestsOverlay] = useState<boolean>(false);
@@ -39,7 +39,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
         }
         settings.name = vaultName;
         for (const room of settings.rooms) {
-            if (room.id === roomEditOverlay?.id) {
+            if (room.id === roomOverlay?.id) {
                 room.name = roomName;
                 room.dirs = [roomFolder!];
             }
@@ -116,14 +116,14 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     }, [toggleVault, vaultStatus]);
 
     useEffect(() => {
-        if (roomEditOverlay) {
-            setRoomName(roomEditOverlay.name);
-            setRoomFolder(roomEditOverlay.dirs[0] || null);
+        if (roomOverlay) {
+            setRoomName(roomOverlay.name);
+            setRoomFolder(roomOverlay.dirs[0] || null);
         } else {
             setRoomName("");
             setRoomFolder(null);
         }
-    }, [roomEditOverlay]);
+    }, [roomOverlay]);
     
     useEffect(() => {
         console.log(signOutOverlay);
@@ -132,8 +132,10 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     useEffect(() => {
         if (requestsOverlay) {
             console.log("Fetching pending requests...");
+            setLoadingOverlay("Loading pending requests...");
             window.electronAPI.getPendingRequests().then((data) => {
                 setPendingRequests(data.requests);
+                setLoadingOverlay(false);
                 console.log("Fetched pending requests:", data);
             }).catch((error) => {
                 console.error("Error fetching pending requests:", error);
@@ -154,18 +156,51 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
         }
     };
     const editRoom = () => {
-        if (roomEditOverlay) {
-            roomEditOverlay.name = roomName;
-            roomEditOverlay.dirs = [roomFolder!];
-            const index = settings.rooms.findIndex(r => r.id === roomEditOverlay.id);
+        if (roomOverlay) {
+            roomOverlay.name = roomName;
+            roomOverlay.dirs = [roomFolder!];
+            const index = settings.rooms.findIndex(r => r.id === roomOverlay.id);
             if (index !== -1) {
-                settings.rooms[index] = roomEditOverlay;
+                settings.rooms[index] = roomOverlay;
             }
             else {
-                settings.rooms[index] = roomEditOverlay;
+                settings.rooms[index] = roomOverlay;
             }
-            setRoomEditOverlay(undefined);
+            setRoomOverlay(undefined);
         }
+    };
+
+    const createRoom = () => {
+        if (!roomName || !roomFolder) {
+            setError("Please enter a room name and select a folder");
+            return;
+        }
+        const newRoom: Room = {
+            name: roomName,
+            dirs: [roomFolder],
+        };
+        setSettings({
+            ...settings,
+            rooms: [...settings.rooms, newRoom],
+        });
+        setRoomOverlay(undefined);
+        setRoomName("");
+        setRoomFolder(null);
+    };
+    const cancelRequest = (email: string) => {
+        setLoadingOverlay("Cancelling request...");
+        window.electronAPI.cancelRequest(email).then((response) => {
+            if (response.status === "success") {
+                setNotification({ message: response.message, type: 'success' });
+                getPendingRequests();
+                setLoadingOverlay(false);
+            } else {
+                setNotification({ message: response.message, type: 'error' });
+            }
+        }).catch((error) => {
+            console.error("Error cancelling request:", error);
+            setNotification({ message: "Failed to cancel request", type: 'error' });
+        });
     };
 
     const addUser = () => {
@@ -173,7 +208,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             setError("Please enter a user email");
             return;
         }
-        setLoadingOverlay(true);
+        setLoadingOverlay("Inviting user...");
         window.electronAPI.inviteUser(userEmail).then((response) => {
             setLoadingOverlay(false);
             if (response.status === "success") {
@@ -191,9 +226,9 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             console.error("Error inviting user:", error);
         });
     };
-    const roomEditOverlayElement = (
-        <SideOverlay isOpen={roomEditOverlay !== undefined} onClose={() => setRoomEditOverlay(undefined)}>
-                <h2>Edit Room</h2>
+    const roomOverlayElement = (
+        <SideOverlay isOpen={roomOverlay !== undefined} onClose={() => setRoomOverlay(undefined)}>
+                <h2>{roomOverlay ? "Edit" : "Create"} Room</h2>
                 <input
                     type="text"
                     className="text_input"
@@ -207,9 +242,13 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
                 <button onClick={addRoomFolder}>Select a folder with songs</button>
                 
                 { (roomFolder && roomName) ? <button style={{fontWeight: 'bold'}}onClick={() => {
-                    editRoom();
-                    setRoomEditOverlay(undefined);
-                }}>Edit Room</button> : null }
+                    if (roomOverlay) {
+                        editRoom();
+                    } else {
+                        createRoom();
+                    }
+                    setRoomOverlay(undefined);
+                }}>{roomOverlay ? "Edit" : "Create"} Room</button> : null }
         </SideOverlay>
     );
     const errorOverlayElement = (
@@ -231,28 +270,32 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     );
     const requestsOverlayElement = (
         <SideOverlay isOpen={requestsOverlay} onClose={() => setRequestsOverlay(false)}>
-           { loadingOverlay ? <Loading text="Loading pending requests..." /> : null }
-           <h2>Pending invites to join</h2>
-           <div className='mini-player-card'>
-                <div className='player-card'> 
-                    { pendingRequests.map((request, index) => {
-                            return (
-                                <div key={index} className='player-list-item'>
-                                    {request.email}
-                                    <button className='danger'>Cancel</button>
-                                </div>
+           { loadingOverlay ? <Loading text={loadingOverlay} /> : (
+            <>
+            <h2>Pending invites to join</h2>
+            <div className='mini-player-card'>
+                    <div className='player-card'> 
+                        { pendingRequests.map((request, index) => {
+                                return (
+                                    <div key={index} className='player-list-item'>
+                                        {request.email}
+                                        <button className='danger' onClick={() => cancelRequest(request.email)}>Cancel</button>
+                                    </div>
 
-                            );
-                    }) }
-                </div>
+                                );
+                        }) }
+                    </div>
 
-           </div>
+            </div>
+            </>
+           ) }
+           
            
         </SideOverlay>
     );
     const usersOverlayElement = (
         <SideOverlay isOpen={usersOverlay} onClose={() => setUsersOverlay(false)}>
-            {loadingOverlay ? <Loading text="Inviting user..." /> : (
+            {loadingOverlay ? <Loading text={loadingOverlay} /> : (
                 <>
                 <h2>Add a user</h2>
                 <a>Learn more about inviting users</a>
@@ -278,18 +321,27 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             )}
         </SideOverlay>
     );
-
-    const rooms = settings.rooms.map((room) => {
-        return (
-            <div className='player-list-item' key={room.id}>
-                <div style={{textAlign: 'left'}}>
-                    <h3>{room.name}</h3> 
-                    <small>ID: {room.id}</small>
+    const rooms = (
+        <>
+        <div className='player-list-item' onClick={() => {
+            setRoomOverlay(null);
+        }}>
+            <h3><span style={{ fontSize: '24px', marginLeft: '0', marginRight: '1rem' }}>+</span>Add a new room</h3>
+            
+        </div>
+        {settings.rooms.map((room: Room) => {
+            return (
+                <div className='player-list-item' key={room.id}>
+                    <div style={{textAlign: 'left'}}>
+                        <h3>{room.name}</h3> 
+                        <small>ID: {room.id}</small>
+                    </div>
+                    <button style={{marginLeft: 'auto'}} onClick={() => setRoomOverlay(room)}>Edit</button>
                 </div>
-                <button style={{marginLeft: 'auto'}} onClick={() => setRoomEditOverlay(room)}>Edit</button>
-            </div>
-        );
-    }); 
+            );
+        })}
+        </>
+    );
     const general = (
         <div className="general">
             <div className='player-list-item'>
@@ -405,15 +457,17 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
         {notification ? <Notification message={notification.message} type={notification.type} dismiss={() => setNotification(null)} /> : null}
         {signOutOverlay ? signOutOverlayElement : null}
         {error ? errorOverlayElement : null}
-        {roomEditOverlay ? roomEditOverlayElement : null}
+        {roomOverlay !== undefined ? roomOverlayElement : null}
         {requestsOverlay ? requestsOverlayElement : null}
         <Header ref={headerRef}>
             <p>{authState.user?.displayName}</p>
+            <button onClick={() => {window.location.reload()}}>Refresh</button>
             <button className='danger' onClick={() => setSignOutOverlay(true)}>Sign out</button>
         </Header>
         <div ref={infoRef} className="info">
             <div>
                 <h1>{currentVaultName}</h1>
+                <small>ID: {authState.id}</small>
                 <p>Manage your vault</p>
             </div>
             

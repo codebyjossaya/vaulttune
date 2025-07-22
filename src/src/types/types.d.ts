@@ -3,7 +3,7 @@ import type { UserRecord } from "firebase-admin/auth";
 import type { User, PendingRequest } from "../../interfaces/types";
 
 export interface Room {
-    id: string;
+    id?: string;
     name: string;
     dirs: string[];
 }

@@ -10,6 +10,7 @@ interface ElectronAPI {
   signIn: (api?: string) => Promise<AuthState>;
   signOut: () => Promise<void>;
   getUsers: () => Promise<{status: string, users: User[]}>;
+  cancelRequest: (email: string) => Promise<{status: string, message: string}>;
   getPendingRequests: () => Promise<{status: string, requests: PendingRequest[]}>;
   inviteUser: (email: string) => Promise<{status: string, message: string}>;
   serverStatus: () => Promise<"online" | "offline" | "error">;
