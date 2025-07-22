@@ -392,6 +392,10 @@ margin-bottom: 0;
   cursor: pointer;
   margin: 15pt;
 }
+
+.player-list-item > button {
+  margin-left: auto;
+}
 .switcher {
   display: flex;
   justify-content: center;

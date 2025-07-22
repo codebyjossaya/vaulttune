@@ -11,6 +11,7 @@ export function getAuthState(): Promise<AuthState> {
             }
             console.log("Verifying existing VaultTune token...");
             const api = server.options.api || 'https://api.jcamille.tech';
+            server.options.token = token;
             fetch(`${api}/vaulttune/auth/vault/verifyToken/`, {
                 method: "POST",
                 headers: {

@@ -20,3 +20,10 @@ export class SongOptions {
     public path?: string;
     public id?: string;
 }
+
+export class User {
+    public uid: string;
+    public name: string;
+    public email: string;
+    public avatar?: string;
+}

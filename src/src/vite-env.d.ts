@@ -8,6 +8,7 @@ interface ElectronAPI {
   getAuthState: () => Promise<AuthState>;
   signIn: (api?: string) => Promise<AuthState>;
   signOut: () => Promise<void>;
+  getUsers: () => Promise<User[]>;
   serverStatus: () => Promise<"online" | "offline" | "error">;
   serverSettings: () => Promise<Options | undefined>;
   setServerSettings: (settings: Options) => Promise<boolean>;

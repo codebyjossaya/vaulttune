@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Loading } from './Loading';
 import { Header } from './Header';
-import type { Options, Room, AuthState } from '../types/types';
+import type { Options, Room, AuthState, User } from '../types/types';
 import { SideOverlay } from './SideOverlay';
 import Notification from './Notification';
 export function Manager({settings, setSettings, authState, signOut}: {settings: Options, setSettings: (settings: Options) => void, authState: AuthState, signOut: () => void}) {
@@ -21,6 +21,9 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: window.innerWidth, height: window.innerHeight });
     const [divSize, setDivSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning'; } | null>(null);
+    const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+    const [usersOverlay, setUsersOverlay] = useState<boolean>(false);
+    const [users, setUsers] = useState<User[]>([]);
     const infoRef = useRef<HTMLDivElement>(null);
     const playerCardRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
@@ -41,14 +44,30 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
         console.log("Updated settings:", settings);
         setSettings(settings);
     }
+
+    function getUsers() {
+
+        window.electronAPI.getUsers().then((data) => {
+            setUsers(data.users);
+            console.log("Fetched users:", data);
+        }).catch((error) => {
+            console.error("Error fetching users:", error);
+            setNotification({ message: "Failed to fetch users", type: 'error' });
+        });
+    }
     
 
     useEffect(() => {
+        getUsers();
         window.electronAPI.serverStatus().then((status: "online" | "offline" | "error") => {
             console.log("Server status:", status);
             setVaultStatus(status);
         });
     }, []);
+
+    useEffect(() => {
+        
+    });
     useEffect(() => {
         console.log("Vault toggled:", toggleVault);
         if (vaultStatus === "offline" && toggleVault) {
@@ -210,6 +229,31 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
         </div>
     );
 
+    const usersElement = (
+        <>
+            <div className='player-list-item'>
+                <h3>View pending requests to join</h3>
+                <button onClick={() => {}}>View Requests</button>
+        </div>
+        {users.map((user: User) => {
+            return (
+                <div className='player-list-item' key={user.uid}>
+                    <div style={{ textAlign: 'left' }}>
+                        <h3>{user.name}</h3>
+                        <small>ID: {user.uid}</small>
+                    </div>
+                    <button style={{ marginLeft: 'auto' }} onClick={() => {
+                        setUsersOverlay(true);
+                    }}>View</button>
+                </div>
+            );
+                    })
+        }
+        </>
+        
+    );
+    
+
     useEffect(() => {
         const handleResize = () => {
             setDimensions({ width: window.innerWidth, height: window.innerHeight });
@@ -270,7 +314,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
                         style={{ backgroundColor: selector === "USERS" ? '#ffffff' : 'transparent', color: selector === "USERS" ? '#000000' : '#ffffff' }}>
                         Users</button>
             </div>
-            { selector === "GENERAL" ? general : selector === "ROOMS" ? rooms : <div>Playlists</div>}
+            { selector === "GENERAL" ? general : selector === "ROOMS" ? rooms : usersElement}
         </div>
         </>
         

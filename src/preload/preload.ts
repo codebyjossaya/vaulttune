@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAuthState: () => ipcRenderer.invoke('get-auth-state'),
   signIn: (api?: string) => ipcRenderer.invoke('sign-in', api),
   signOut: () => ipcRenderer.invoke('sign-out'),
+  getUsers: () => ipcRenderer.invoke('get-users'),
   serverStatus: () => ipcRenderer.invoke('server-status'),
   serverSettings: () => ipcRenderer.invoke('get-server-settings'),
   setServerSettings: (settings: Options) => ipcRenderer.invoke('set-server-settings', settings),

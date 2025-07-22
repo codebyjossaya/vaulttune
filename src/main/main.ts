@@ -9,6 +9,7 @@ import { getSettings } from './getSettings';
 import { promptHandler } from './promptHandler';
 import { existsSync, readFileSync } from 'fs';
 import keytar from 'keytar'
+import { User } from 'interfaces/types';
 
 let server: Server;
 
@@ -108,6 +109,33 @@ ipcMain.handle('stop-server', async () => {
         console.error("Error stopping server:", error);
         return false;
     }
+});
+
+ipcMain.handle('get-users', () => {
+    return new Promise((resolve, reject) => {
+        console.log("Options", server.options)
+        fetch(`${server.options.api}/vaulttune/vault/getUsers`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            }, body: JSON.stringify({
+                vault_token: server.options.token,
+            })
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch users");
+            }
+            return response.json();
+        }).then((data: User[]) => {
+            if (data) {
+                resolve(data);
+            }
+        }).catch((error) => {
+            console.error("Error fetching users:", error);
+            reject(error);
+        });
+    });
+    
 });
 
 app.on('window-all-closed', () => {

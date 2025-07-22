@@ -3,7 +3,7 @@ import Room from "./room";
 import { handleUploadSong } from "../helpers/handle_upload_song";
 import { handleJoinRoom } from "../helpers/handle_join_room";
 import { handlePlaySong } from "../helpers/handle_play_song";
-import { ServerOptions, Options } from "../interfaces/types";
+import { ServerOptions, Options, User } from "../interfaces/types";
 import { handleGetSongs } from "../helpers/handle_get_songs";
 import { createServer, Server as httpServer } from "http";
 import { handleDisconnect } from "../helpers/handle_disconnect";
@@ -39,6 +39,7 @@ export default class Server {
     public address: string;
     public rpc: Client | undefined;
     public state: "online" | "offline" | "error" = "offline";
+    public users: User[] = [];
 
     constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech'}) {
         this.options = options;
@@ -271,7 +272,7 @@ export default class Server {
                             user_email: user,
                             vault_token: token
                         })
-                    fetch(`${this.options.api}/vaulttune/auth/vault/addUser/`, {
+                    fetch(`${options.api}/vaulttune/auth/vault/addUser/`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"

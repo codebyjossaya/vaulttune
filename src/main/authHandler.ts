@@ -3,7 +3,8 @@ import express from 'express';
 import { shell } from 'electron';
 import keytar from 'keytar';
 import { AuthState } from "src/types/types";
-export function authHandler(event: Electron.IpcMainInvokeEvent, api: string = 'https://vaulttune.jcamille.tech') {
+import { existsSync, readFileSync, write, writeFileSync } from "fs";
+export function authHandler(event: Electron.IpcMainInvokeEvent, frontend: string = 'https://vaulttune.jcamille.tech') {
     return new Promise<AuthState>((resolve, reject) => {
         try {
             // Implement your sign-in logic here
@@ -30,9 +31,16 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, api: string = 'h
                     res.status(400).send("Token is required");
                     reject(new Error("Token is required"));
                 }
-                if (api) {
+                if (frontend) {
                     server.options.api = api;
                     console.log("Server API set to:", server.options.api);
+                    if (existsSync(`${process.env.HOME}/VaultTune/settings/server.json`)) {
+                        const data = JSON.parse(readFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, 'utf-8'));
+                        data.options.api = api;
+
+                        writeFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, JSON.stringify(data, null, 2));
+
+                    }
                 }
                 
                 fetch(`${server.options.api}/vaulttune/auth/vault/getToken/`, {
@@ -82,7 +90,7 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, api: string = 'h
                 });
 
             });
-            shell.openExternal(`${api}/?callback`)
+            shell.openExternal(`${frontend}/?callback`)
 
         } catch (error) {
             console.error("Error during sign-in:", error);
