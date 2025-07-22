@@ -139,6 +139,40 @@ export class Server {
                     res.status(400).json({status: "failed", error: error.message});
                 }
             });
+            this.app.post('/vaulttune/vault/getUsers', async (req: express.Request, res: express.Response) => {
+                try {
+                    console.log(`Request to get Vault users received`)
+                    const { vault_token } = req.body;
+                    if (!vault_token) {
+                        throw new Error("Vault token is required");
+                    }
+                    console.log(`Authenticating Vault...`)
+                    const server_token = verifyServer(vault_token);
+                    console.log(`Vault ${server_token.id} authenticated! Getting users...`)
+                    // Get reference to the vault in the database
+                    const vaultRef = this.database.ref(`/vaults/${server_token.id}/users`);
+                    // Get the vault data
+                    const snapshot = await vaultRef.once('value');
+                    if (!snapshot.exists()) {
+                        throw new Error("Vault not found");
+                    }
+                    // Get user records for each user ID
+                    const userPromises = snapshot.val().map((uid: string) => this.auth.getUser(uid));
+                    const users = await Promise.all(userPromises);
+                    res.json({  status: "success", 
+                                users: users.map((user: any) => ({
+                                    uid: user.uid,
+                                    email: user.email,
+                                    name: user.displayName,
+                                    avatar: user.photoURL
+                                }))
+                            });
+
+                } catch (error: any) {
+                    console.log(error);
+                    res.status(400).json({status: "failed", error: error.message});
+                }
+            });
             // register a vault's name with its appropriate tunnel URL
             this.app.post('/vaulttune/user/vault/register', async (req: express.Request, res: express.Response) => {
                 console.log(`Request to register Vault received`)
