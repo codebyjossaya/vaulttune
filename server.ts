@@ -205,21 +205,19 @@ export class Server {
             this.app.post('/vaulttune/user/vault/register', async (req: express.Request, res: express.Response) => {
                 console.log(`Request to register Vault received`)
                 try {
-                    console.log(req.body);
-                    for (const item of Object.values(req.body)) if (item === undefined || !item) throw new Error("Vault token, user token, vault name, and tunnel URL are required");
 
                     const { vault_name, tunnel_url, token } = req.body;
+                    if (!vault_name || !token) {
+                        throw new Error("Vault name and token are required");
+                    }
+                    
                     console.log(`Authenticating Vault...`)
                     const server_token = verifyServer(token);
                     console.log(`Vault ${server_token.id} authenticated, registering Vault for User ${server_token.user.uid}`)
-                    if (!vault_name || !tunnel_url) {
-                        throw new Error("Vault name and tunnel URL are required");
-                    }
-                    if (typeof vault_name !== 'string' || typeof tunnel_url !== 'string') {
-                        throw new Error("Vault name and tunnel URL must be strings");
-                    }
-
                     
+                    if (typeof vault_name !== 'string' || typeof token !== 'string') {
+                        throw new Error("Vault name and token must be strings");
+                    }
 
                     // Get references to the vault and user vaults in the database
                     const vaultRef = this.database.ref(`/vaults/${server_token.id}`);
@@ -416,7 +414,7 @@ export class Server {
                     await userVaultRef.set(request);
                     await requestRef.set(request);
 
-                    res.json({status: "success", message: `Succesfully sent a request to user ${user_email} to join Vault ${vaultData.vault_id}`});
+                    res.json({status: "success", message: `Succesfully sent a request to user ${user_email} to join this Vault`});
                     console.log(`Succesfully sent a request to user ${user_email} to join Vault ${vaultData.vault_id}`);
                 } catch (error: any) {
                     console.log(error)
