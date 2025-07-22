@@ -374,7 +374,7 @@ export class Server {
                 }
             });
             // add user to vault
-            this.app.post('/vaulttune/user/vault/addUser', async (req: express.Request, res: express.Response) => {
+            this.app.post('/vaulttune/vault/addUser', async (req: express.Request, res: express.Response) => {
                 console.log(`Request to add user to Vault received`)
                 try {
                     const { vault_token, user_email } = req.body;
