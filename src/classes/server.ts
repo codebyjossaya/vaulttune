@@ -25,7 +25,7 @@ import { writeFileSync, existsSync, mkdirSync } from "fs";
 import type Song from "./song";
 import type Playlist from "./playlist";
 import keytar from "keytar";
-import { ipcMain } from "electron";
+import { ipcMain, app } from "electron";
 
 
 export default class Server {
@@ -87,9 +87,11 @@ export default class Server {
             console.log("SIGINT received.");
             this.stop().then(() => {
                 console.log("VaultTune server stopped successfully");
+                app.quit();
                 process.exit(0);
             }).catch((err) => {
                 console.error("Error during shutdown:", err);
+                app.quit();
                 process.exit(1);
             });
         });
@@ -305,6 +307,11 @@ export default class Server {
         console.log("Server options updated successfully:", this.options);
         
         return true;
+    }
+
+    async register() {
+        await registerVault(this);
+        console.log("Vault registered successfully with VaultTune servers.");
     }
     async export() {
         const options = this.options;

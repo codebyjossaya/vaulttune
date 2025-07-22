@@ -42,7 +42,6 @@ export const SideOverlay: React.FC<SideOverlayProps> = ({
             className={isMobile ? 'panel-mobile' : 'panel-base'}
             tabIndex={0}
             onKeyDown={(e) => {
-                console.log("Key pressed:", e.key);
                 if (e.key === "Escape") {
                     onClose();
                 } 

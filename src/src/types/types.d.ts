@@ -1,6 +1,6 @@
 import { Options } from "../../interfaces/types";
 import type { UserRecord } from "firebase-admin/auth";
-import type { User } from "../../interfaces/types";
+import type { User, PendingRequest } from "../../interfaces/types";
 
 export interface Room {
     id: string;
@@ -13,4 +13,4 @@ export interface AuthState {
     api?: string;
 
 }
-export type { Options, User };
+export type { Options, User, PendingRequest };

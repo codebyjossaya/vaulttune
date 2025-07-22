@@ -10,6 +10,7 @@ import { promptHandler } from './promptHandler';
 import { existsSync, readFileSync } from 'fs';
 import keytar from 'keytar'
 import { User } from 'interfaces/types';
+import { PendingRequest } from 'interfaces/types';
 
 let server: Server;
 
@@ -84,6 +85,9 @@ ipcMain.handle('set-server-settings', async (event, settings) => {
         console.log(path.join(__dirname, '../config.json'))
         await server.export();
         console.log("Server settings updated:", server.options);
+        
+        console.log("Updating server settings in ", server.options.api);
+        server.register();
         return true;
     } catch (error) {
         console.error("Error setting server settings:", error);
@@ -138,8 +142,70 @@ ipcMain.handle('get-users', () => {
     
 });
 
+ipcMain.handle('get-pending-requests', () => {
+    return new Promise((resolve, reject) => {
+        console.log("Fetching pending requests...");
+        fetch(`${server.options.api}/vaulttune/vault/requests`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                vault_token: server.options.token,
+            })
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch pending requests");
+            }
+            return response.json();
+        }).then((data: PendingRequest[]) => {
+            if (data) {
+                resolve(data);
+            }
+        }).catch((error) => {
+            console.error("Error fetching pending requests:", error);
+            reject(error);
+        });
+    });
+});
+
+ipcMain.handle('invite-user', (event, email) => {
+    return new Promise((resolve, reject) => {
+        console.log("Inviting user:", email);
+        console.log("Vault token exists?", server.options.token ? true : false);
+        fetch(`${server.options.api}/vaulttune/vault/addUser`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                vault_token: server.options.token,
+                user_email: email,
+            })
+        }).then(async (response) => {
+            if (!response.ok) {
+                console.error("Failed to invite user:", await response.json());
+                throw new Error("Failed to invite user");
+            }
+            return response.json();
+        }).then((data: {status: string, message: string}) => {
+            resolve(data);
+        }).catch((error) => {
+            console.error("Error inviting user:", error);
+            reject(error);
+        });
+    });
+});
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') {
+        server.stop().then(() => {
+            console.log("Server stopped successfully.");
+            app.quit();
+        }).catch((error) => {
+            console.error("Error stopping server on app close:", error);
+            app.quit();
+        });
+    }
 });
 
 export { server };

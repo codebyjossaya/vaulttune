@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Loading } from './Loading';
 import { Header } from './Header';
-import type { Options, Room, AuthState, User } from '../types/types';
+import type { Options, Room, AuthState, User, PendingRequest } from '../types/types';
 import { SideOverlay } from './SideOverlay';
 import Notification from './Notification';
 export function Manager({settings, setSettings, authState, signOut}: {settings: Options, setSettings: (settings: Options) => void, authState: AuthState, signOut: () => void}) {
@@ -21,8 +21,11 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: window.innerWidth, height: window.innerHeight });
     const [divSize, setDivSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning'; } | null>(null);
-    const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+    const [loadingOverlay, setLoadingOverlay] = useState<boolean>(false);
     const [usersOverlay, setUsersOverlay] = useState<boolean>(false);
+    const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
+    const [requestsOverlay, setRequestsOverlay] = useState<boolean>(false);
+    const [userEmail, setUserEmail] = useState<string>("");
     const [users, setUsers] = useState<User[]>([]);
     const infoRef = useRef<HTMLDivElement>(null);
     const playerCardRef = useRef<HTMLDivElement>(null);
@@ -55,6 +58,21 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             setNotification({ message: "Failed to fetch users", type: 'error' });
         });
     }
+
+    function getPendingRequests() {
+        window.electronAPI.getPendingRequests().then((data) => {
+            if (data.status === "success") {
+                setPendingRequests(data.requests);
+                console.log("Fetched pending requests:", data);
+            } else {
+                console.error("Failed to fetch pending requests:", data);
+                setNotification({ message: "Failed to fetch pending requests", type: 'error' });
+            }
+        }).catch((error) => {
+            console.error("Error fetching pending requests:", error);
+            setNotification({ message: "Failed to fetch pending requests", type: 'error' });
+        });
+    }
     
 
     useEffect(() => {
@@ -63,11 +81,9 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             console.log("Server status:", status);
             setVaultStatus(status);
         });
+        getPendingRequests();
     }, []);
 
-    useEffect(() => {
-        
-    });
     useEffect(() => {
         console.log("Vault toggled:", toggleVault);
         if (vaultStatus === "offline" && toggleVault) {
@@ -112,6 +128,21 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     useEffect(() => {
         console.log(signOutOverlay);
     }, [signOutOverlay]);
+
+    useEffect(() => {
+        if (requestsOverlay) {
+            console.log("Fetching pending requests...");
+            window.electronAPI.getPendingRequests().then((data) => {
+                setPendingRequests(data.requests);
+                console.log("Fetched pending requests:", data);
+            }).catch((error) => {
+                console.error("Error fetching pending requests:", error);
+                setPendingRequests([]);
+                setNotification({ message: "Failed to fetch pending requests", type: 'error' });
+                setRequestsOverlay(false); // Close the overlay on error
+            });
+        }
+    }, [requestsOverlay]);
     
 
     
@@ -135,6 +166,30 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             }
             setRoomEditOverlay(undefined);
         }
+    };
+
+    const addUser = () => {
+        if (!userEmail) {
+            setError("Please enter a user email");
+            return;
+        }
+        setLoadingOverlay(true);
+        window.electronAPI.inviteUser(userEmail).then((response) => {
+            setLoadingOverlay(false);
+            if (response.status === "success") {
+                setNotification({ message: response.message, type: 'success' });
+                setUserEmail("");
+                setUsersOverlay(false);
+                getPendingRequests();
+            } else {
+                setNotification({ message: response.message, type: 'error' });
+                setUsersOverlay(false);
+            }
+        }).catch((error) => {
+            setLoadingOverlay(false);
+            setNotification({ message: "Failed to invite user", type: 'error' });
+            console.error("Error inviting user:", error);
+        });
     };
     const roomEditOverlayElement = (
         <SideOverlay isOpen={roomEditOverlay !== undefined} onClose={() => setRoomEditOverlay(undefined)}>
@@ -172,6 +227,55 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             <button onClick={() => {
                signOut();
             }}>Sign Out</button>
+        </SideOverlay>
+    );
+    const requestsOverlayElement = (
+        <SideOverlay isOpen={requestsOverlay} onClose={() => setRequestsOverlay(false)}>
+           { loadingOverlay ? <Loading text="Loading pending requests..." /> : null }
+           <h2>Pending invites to join</h2>
+           <div className='mini-player-card'>
+                <div className='player-card'> 
+                    { pendingRequests.map((request, index) => {
+                            return (
+                                <div key={index} className='player-list-item'>
+                                    {request.email}
+                                    <button className='danger'>Cancel</button>
+                                </div>
+
+                            );
+                    }) }
+                </div>
+
+           </div>
+           
+        </SideOverlay>
+    );
+    const usersOverlayElement = (
+        <SideOverlay isOpen={usersOverlay} onClose={() => setUsersOverlay(false)}>
+            {loadingOverlay ? <Loading text="Inviting user..." /> : (
+                <>
+                <h2>Add a user</h2>
+                <a>Learn more about inviting users</a>
+                <p>Enter the email of the user you want to invite:</p>
+                <input
+                    type="email"
+                    className="text_input"
+                    placeholder="Enter user email"
+                    onChange={(e) => {
+                        // Handle email input change
+                        setUserEmail(e.target.value);
+                    }}
+                    value={userEmail}
+                />
+                <button onClick={() => {
+                    if (!userEmail) {
+                        setError("Please enter a user email");
+                        return;
+                    }
+                    addUser();
+                }}>Invite</button>
+                </>
+            )}
         </SideOverlay>
     );
 
@@ -231,20 +335,30 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
 
     const usersElement = (
         <>
-            <div className='player-list-item'>
-                <h3>View pending requests to join</h3>
-                <button onClick={() => {}}>View Requests</button>
+        { pendingRequests.length > 0 ? (
+            <>
+                <a onClick={() => setRequestsOverlay(true)}>View pending invites to join</a>
+                <hr />
+            </>
+        ) : null}
+        
+        <div className='player-list-item' onClick={() => {
+            setUsersOverlay(true);
+        }}>
+            <h3><span style={{ fontSize: '24px', marginLeft: '0', marginRight: '1rem' }}>+</span>Invite a user</h3>
+            
         </div>
         {users.map((user: User) => {
             return (
                 <div className='player-list-item' key={user.uid}>
-                    <div style={{ textAlign: 'left' }}>
+                    <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <h3>{user.name}</h3>
+                        <small>{user.email}</small>
                         <small>ID: {user.uid}</small>
                     </div>
-                    <button style={{ marginLeft: 'auto' }} onClick={() => {
-                        setUsersOverlay(true);
-                    }}>View</button>
+                    <button className='danger' style={{ marginLeft: 'auto' }} onClick={() => {
+                       
+                    }}>Remove</button>
                 </div>
             );
                     })
@@ -287,10 +401,12 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
 
     return loading ? (<Loading text={loading} />) : (
         <>
+        { usersOverlay ? usersOverlayElement : null }
         {notification ? <Notification message={notification.message} type={notification.type} dismiss={() => setNotification(null)} /> : null}
         {signOutOverlay ? signOutOverlayElement : null}
         {error ? errorOverlayElement : null}
         {roomEditOverlay ? roomEditOverlayElement : null}
+        {requestsOverlay ? requestsOverlayElement : null}
         <Header ref={headerRef}>
             <p>{authState.user?.displayName}</p>
             <button className='danger' onClick={() => setSignOutOverlay(true)}>Sign out</button>

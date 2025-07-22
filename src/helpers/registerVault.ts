@@ -12,7 +12,7 @@ export function registerVault(t: Server) {
                 body: JSON.stringify({
                     token: t.options.token,
                     vault_name,
-                    tunnel_url: t.address,
+                    tunnel_url: t.address || null,
                 })
             }).then(response => {
                 if (!response.ok) {

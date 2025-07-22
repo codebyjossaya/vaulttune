@@ -37,7 +37,7 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, frontend: string
                     if (existsSync(`${process.env.HOME}/VaultTune/settings/server.json`)) {
                         const data = JSON.parse(readFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, 'utf-8'));
                         data.options.api = api;
-
+                        server.register();
                         writeFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, JSON.stringify(data, null, 2));
 
                     }

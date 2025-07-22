@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 
+import type { PendingRequest } from "../interfaces/types";
 import type { Options } from "./interfaces/types";
 import type { AuthState } from "./types/types";
 
@@ -8,7 +9,9 @@ interface ElectronAPI {
   getAuthState: () => Promise<AuthState>;
   signIn: (api?: string) => Promise<AuthState>;
   signOut: () => Promise<void>;
-  getUsers: () => Promise<User[]>;
+  getUsers: () => Promise<{status: string, users: User[]}>;
+  getPendingRequests: () => Promise<{status: string, requests: PendingRequest[]}>;
+  inviteUser: (email: string) => Promise<{status: string, message: string}>;
   serverStatus: () => Promise<"online" | "offline" | "error">;
   serverSettings: () => Promise<Options | undefined>;
   setServerSettings: (settings: Options) => Promise<boolean>;
