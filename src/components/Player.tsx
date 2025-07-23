@@ -34,6 +34,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
   const [playlistView, setPlaylistView] = useState<Playlist | null>(null);
   const [nextUp, setNextUp] = useState<Song | null>(null);
+  const [iosDialog, setIosDialog] = useState<boolean>(isOniOS(window));
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const playingRef = useRef<HTMLDivElement>(null);
@@ -48,9 +49,12 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   const currentlyPlayingRef = useRef<Song | null>(currentlyPlaying);
   const currentPlaylistRef = useRef<Playlist | null>(currentPlaylist);
   const songStartRef = useRef<boolean>(false);
+  const roomsRef = useRef<Room[]>(rooms);
 
 
   const socket = config.socket!;
+
+
   const user = config.user!;
   const signOut = config.signOut;
 
@@ -65,9 +69,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     }
     return false;
   }
-  function appendBuffer(obj: SongChunk) {
-    console.log(`Chunk #${obj.chunk_counter} out of ${chunkCounterRef.current} received, appending to buffer`);
-    console.log(`Source ref exists? ${sourceRef.current !== null}`);
+  async function appendBuffer(obj: SongChunk) {
+    
     const chunkCounter = chunkCounterRef.current;
     const buffer = bufferRef.current;
     buffer?.appendBuffer(obj.buffer);
@@ -76,8 +79,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         console.log("Ending stream")
         buffer!.addEventListener('updateend', () => {
             if (checkSourceBufferDuration(source.duration)) {
-                console.log("SourceBuffer duration is sufficient, resolving")
-                console.log(`Updating? ${!bufferRef.current?.updating}`);
+                
                 try {
                     source!.endOfStream();
                 } catch (error) {
@@ -95,7 +97,10 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   }
 
   function songChunkListener(obj: SongChunk) {
-    console.log(`Received chunk #${obj.chunk_counter}`);
+
+    if (obj.chunk_counter == 0) {
+        audioRef.current!.play();
+    }
     const queue = queueRef.current;
     // Immediately append if buffer is ready, otherwise queue
     if (!bufferRef.current?.updating && queue.length === 0) {
@@ -188,13 +193,13 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     }, [currentPlaylist]);
 
     useEffect(() => {
-        console.log("hi");
-        socket.on('available rooms', (data: Room[]) => setRooms(data))
-        if (!rooms || rooms.length === 0) {
-            console.log("No rooms available, requesting from server");
-            socket.emit('get rooms');
-        }
-        
+
+        socket.emit('get rooms')
+        socket.on('available rooms', (data: Room[]) => {
+            console.log("Received rooms:", data);
+            setRooms(data);
+            roomsRef.current = data; // update the roomsRef with the new rooms
+        })
         socket.on('songs', (songs: Song[]) => {
             setSongs(songs);
             console.log("Received songs:", songs);
@@ -204,16 +209,14 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         // freezes right after joining a room, eventually unfreezes.
         socket.on('status', (state: string) => {
             console.log("New state received:", state);
-            // Extract room ID from the state string
-            if (state.startsWith('Joined room ')) {
-            const joinedRoomId = state.substring('Joined room '.length);
-            // rooms state is up to date, so just find the room directly
-            const foundRoom = rooms.find(room => room.id === joinedRoomId);
-            console.log("Found room:", foundRoom);
-            if (foundRoom) {
-                joinRoom(foundRoom);
+            // target THIS. get rid of rooms in dependency array.
+            if (state.includes('Joined room ')) {
+                console.log(roomsRef.current)
+                const room = roomsRef.current.find(room => room.id === state.substring(12,state.length));
+                console.log("Joined room:", room);
+                joinRoom(room!);
             }
-            }
+
             else if (state === 'Song successfully uploaded') {
             console.log("Upload success")
             setUploadState(UploadStates.SUCCESS);
@@ -229,14 +232,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             };
             console.log("State changed to:", state);
         });
-        return () => {
-            socket.removeAllListeners('available rooms');
-            socket.removeAllListeners('songs');
-            socket.removeAllListeners('playlists');
-            socket.removeAllListeners('status');
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[socket.connected,rooms]);
+    },[]);
 
     useEffect(() => {
 
@@ -245,19 +241,33 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         socket.on("song data - iOS", (song: Song) => setCurrentlyPlaying(song))
         socket.on("song playlist - iOS", (playlist_url: string) => {
             console.log("Playlist URL:", playlist_url)
-            audioRef!.current!.src = playlist_url;
-        });
+
 
             socket.on('song data end', () => {
                 console.log("Song data end received, ending stream");
                 endOfSongRef.current = true; // set end of song to true
             });
             // Instantly skip all remaining chunks from previous song when a new song is requested
-
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', playlist_url, true);
+            xhr.setRequestHeader('Bypass-Tunnel-Reminder', 'true');
+            xhr.responseType = 'blob';
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    const audioBlob = new Blob([xhr.response], { type: 'audio/mpeg' });
+                    audioRef.current!.src = URL.createObjectURL(audioBlob);
+                    audioRef.current!.play();
+                } else {
+                    console.error("Error fetching playlist data:", xhr.statusText);
+                }
+            };
+            xhr.send();
             
         
-        socket.on('error', (error: string) => {
-            setError("There was an error. View the error here: " + error)
+            socket.on('error', (error: string) => {
+                setError("There was an error. View the error here: " + error)
+            });
         });
 
         return () => {
@@ -352,7 +362,6 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
                         buf.onupdateend = () => {
                             // if there is data in the queue, append it to the buffer
-                            console.log("Buffer is now appending data from queue", queue.length);
                             while (queue.length > 0 && !buffer!.updating) {
                                 if (buffer!.updating) break; // if the buffer is updating, break the loop
                                 const data = queue.shift();
@@ -360,7 +369,6 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                                 try {
                                     if (data) appendBuffer(data)
                                 } catch (error) {
-                                    console.error("Error appending buffer:", error);
                                     setError("There was an error in playing the song. Please try again.");
                                 }
                                 
@@ -372,7 +380,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         socket.on(`song data ${song.id}`, songChunkListener);
                         // this event is sent in a non timely manner
                         socket.emit(`song data ready ${song.id}`);
-                        audioRef.current!.play();
+                        
 
                         
                     });
@@ -380,10 +388,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 
                 }   
             }
-            // console.log("Song data start listener registered");
             socket.on('song data start', songDataListener);
             return () => {
-                // console.log("Removing song data start listener");
                 socket.removeListener("song data start", songDataListener);
             }
         });
@@ -455,11 +461,11 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 </Overlay>
             ) : null}
             {
-                isOniOS(window) ? (
+                iosDialog ? (
                     <Overlay>
                         <h1>VaultTune is not fully supported on iOS devices.</h1>
                         <p>Playback may not work as expected.</p>
-                        <button onClick={() => {enableUploadDialog(false)}}>Exit</button>
+                        <button onClick={() => {setIosDialog(false)}}>Exit</button>
                     </Overlay>
                 ) : null
             }
@@ -654,7 +660,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         </div>
     );
 
-    return room !== null ? ( songs ? player : <Loading text='Getting songs...'  />) : rooms.length == 0 ? <Loading text="Getting rooms.." /> : (
+    return room !== null ? ( songs && songs.length > 0 ? player : <Loading text='Getting songs...'  />) : roomsRef.current.length == 0 ? <Loading text="Getting rooms.." /> : (
         <div className='card-container'>
             <div className="card">
                     <h1>VaultTune</h1>

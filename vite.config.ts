@@ -14,4 +14,7 @@ export default defineConfig({
     },
     minify: false,
   },
+  server: {
+    allowedHosts: true,
+  }
 })
