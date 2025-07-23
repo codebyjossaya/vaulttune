@@ -33,7 +33,8 @@ export async function handleiOSPlaySong(t: Server, socket: Socket, room_id: stri
             const ext = extname(filePath);
             const mimeTypes: Record<string, string> = {
                 '.m3u8': 'application/vnd.apple.mpegurl',
-                '.ts': 'video/mp2t'
+                '.ts': 'video/mp2t',
+                '.mp3': 'audio/mpeg',
             };
     
             if (mimeTypes[ext]) {
@@ -45,6 +46,8 @@ export async function handleiOSPlaySong(t: Server, socket: Socket, room_id: stri
             res.setHeader('Cache-Control', 'no-store');
             res.setHeader('Accept-Ranges', 'bytes'); // Enables seeking support
             res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, bypass-tunnel-reminder');
         }
     })); 
     // Store a reference to the disconnect handler for this socket
@@ -54,10 +57,13 @@ export async function handleiOSPlaySong(t: Server, socket: Socket, room_id: stri
         // Remove previous handler if it exists
         socket.off('disconnect', socket.data.iosDisconnectHandler);
         socket.data.iosDisconnectHandler = null;
+        console.log("Reassigning disconnect handler for iOS device");
+        socket.data.iosDisconnectHandler = disconnectHandler; 
     }
     // Add the new disconnect listener
     socket.on('disconnect', socket.data.iosDisconnectHandler);
     console.log("Sending playlist link to iOS device")
+    console.log(`Playlist link: ${t.address}/${socket.id}/${basename(song.path)}`)
     socket.emit('song playlist - iOS', `${t.address}/${socket.id}/${basename(song.path)}`)
     
 

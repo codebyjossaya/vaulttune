@@ -46,17 +46,17 @@ export default class Server {
         this.app = express();
         this.app.use(cors({
             origin: '*', // NOTE: Use specific origins in production!
-            methods: ['GET', 'POST'],
-            allowedHeaders: ['Content-Type']
+            methods: ['GET', 'POST', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'bypass-tunnel-reminder'],
         }))
         this.httpServer = createServer(this.app);
 
         this.io = new SocketServer(this.httpServer, {
             cors: {
                 origin: "*",
-                methods: ["GET", "POST"],
+                methods: ["GET", "POST","OPTIONS"],
                 credentials: true,
-                exposedHeaders: ["Access-Control-Allow-Origin"]
+                exposedHeaders: ["Access-Control-Allow-Origin", "Access-Control-Request-Headers"]
             },
             maxHttpBufferSize: 1e8
         });
@@ -68,6 +68,7 @@ export default class Server {
             socket.on('get rooms', () => {
                 console.log(`Device ${socket.id} requested available rooms`);
                 socket.emit("available rooms",this.getRooms());
+                console.log(`Sent available rooms to device ${socket.id}`);
             });
             socket.on('leave room', (room_id) => {handleLeaveRoom(this,socket,room_id)});
             // handlers

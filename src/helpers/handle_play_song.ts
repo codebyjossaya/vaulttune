@@ -31,7 +31,7 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
         })
     }
     
-    let chunkSize = (buf.byteLength / song.metadata.format.duration) * 5
+    let chunkSize = (buf.byteLength / song.metadata.format.duration) * 0.5;
     const total_chunks = Math.ceil(buf.byteLength / chunkSize);
     let timeoutId: NodeJS.Timeout | null = null;
     console.log(`Song: ${song.metadata.common.title} by ${song.metadata.common.artist} with a chunk size of ${chunkSize} and bytelength of ${buf.byteLength} making ${total_chunks} total chunks`)
@@ -70,7 +70,7 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
                 offset += chunkSize;
                 chunk_counter += 1;
                 console.log(`Sending chunk ${chunk_counter} out of ${total_chunks} of song ${song_id}`);
-                timeoutId = setTimeout(sendChunk, 0); // Use setTimeout to avoid blocking the event loop
+                timeoutId = setTimeout(sendChunk, 10); // Use setTimeout to avoid blocking the event loop
             } else {
                 console.log("Finished sending song data");
                 socket.emit("song data end");
