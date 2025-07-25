@@ -1,5 +1,7 @@
 {
-  "name": "src",
+  "name": "vaulttune",
+  "description": "VaultTune is a self-hosted music server that allows you to stream your music library to any device over the web.",
+  "author": "Jossaya Camille",
   "private": true,
   "version": "0.0.0",
   "main": "dist-electron/main/main.js",
@@ -8,7 +10,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
   },
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
@@ -23,6 +28,7 @@
     "concurrently": "^9.2.0",
     "cors": "^2.8.5",
     "discord-rpc": "^4.0.1",
+    "electron-squirrel-startup": "^1.0.1",
     "express": "^4.21.2",
     "fluent-ffmpeg": "^2.1.3",
     "http2": "^3.3.6",
@@ -41,6 +47,14 @@
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.8.1",
+    "@electron-forge/maker-deb": "^7.8.1",
+    "@electron-forge/maker-rpm": "^7.8.1",
+    "@electron-forge/maker-squirrel": "^7.8.1",
+    "@electron-forge/maker-zip": "^7.8.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.8.1",
+    "@electron-forge/plugin-fuses": "^7.8.1",
+    "@electron/fuses": "^1.8.0",
     "@eslint/js": "^9.30.1",
     "@types/discord-rpc": "^4.0.9",
     "@types/localtunnel": "^2.0.4",
@@ -48,7 +62,6 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "electron": "^37.2.3",
-    "electron-builder": "^26.0.12",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

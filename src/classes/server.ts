@@ -39,6 +39,7 @@ export default class Server {
     public state: "online" | "offline" | "error" = "offline";
     public users: User[] = [];
     public stoppers: Map<string, NodeJS.Timeout> = new Map();
+    public notify: (message: string, type: "success" | "error" | "warning") => void = () => {}
 
     constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech', token: null}) {
         this.options = options;
@@ -62,7 +63,7 @@ export default class Server {
 
         this.io.on('connection', (socket: Socket) => {
             console.log(`Device ${socket.id} has connected to the server`)
-            ipcMain.emit('device-connected', socket.id);
+            this.notify(`Device ${socket.id} has connected to the server`, "success");
             socket.emit("status","Connection recieved");
             socket.on('get rooms', () => {
                 console.log(`Device ${socket.id} requested available rooms`);
@@ -166,7 +167,34 @@ export default class Server {
                 }
             });
 
-            // add a cancel play song listener1
+            // add a cancel play song listener
+            socket.on('song seeked', (room_id: string, time: number) => {
+                console.log(`Device ${socket.id} has requested to seek song in room ${room_id} to ${time}`);
+                const room: Room | undefined = this.rooms.find((element) => element.id === room_id);
+                if (room === undefined) {
+                    socket.emit("error","Room not found");
+                    return;
+                }
+                socket.to(room_id).emit("song seeked", socket.id, time);
+            });
+            socket.on('song play', (room_id: string) => {
+                console.log(`Device ${socket.id} has requested to play song in room ${room_id}`);
+                const room: Room | undefined = this.rooms.find((element) => element.id === room_id);
+                if (room === undefined) {
+                    socket.emit("error","Room not found");
+                    return;
+                }
+                socket.to(room_id).emit("song played", socket.id);
+            });
+            socket.on('song pause', (room_id: string) => {
+                console.log(`Device ${socket.id} has requested to pause song in room ${room_id}`);
+                const room: Room | undefined = this.rooms.find((element) => element.id === room_id);
+                if (room === undefined) {
+                    socket.emit("error","Room not found");
+                    return;
+                }
+                socket.to(room_id).emit("song paused", socket.id);
+            });
             socket.on('play song - iOS', (room_id: string, song_id: string) => handleiOSPlaySong(this, socket, room_id, song_id));
             socket.on('upload song', (room_id: string, buf: ArrayBuffer) => {handleUploadSong(this,socket,room_id,buf)});
             socket.on('get songs', (room_id: string) => {handleGetSongs(this,socket,room_id)});
@@ -239,7 +267,7 @@ export default class Server {
             console.log("Vault server running on port ", port);
             this.httpServer.listen(port);
         } catch (error) {
-            if (error instanceof Error && error.message.includes("EADDRINUSE")) {
+            if (error.message.includes("EADDRINUSE")) {
                 console.log("port already in use, trying to find another port...");
                 this.start(); // Retry starting the server
                 return;
@@ -252,6 +280,7 @@ export default class Server {
             if (this.tunnel) {
                 this.tunnel.on('error', (error: Error) => {
                     console.error("Tunnel error:", error.message);
+                    this.notify(`Tunnel error: ${error.message}`, "error");
                     this.state = "error";
                     this.error();
                 });

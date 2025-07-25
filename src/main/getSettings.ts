@@ -25,6 +25,7 @@ export function getSettings(): Promise<Options> {
         } catch (error) {
             console.error("Unexpected error in getSettings:", error);
             reject(error);
+            server.notify("There was an error getting the settings. Please try again later.", "error");
         }
     });
 }

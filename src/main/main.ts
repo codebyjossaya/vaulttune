@@ -36,7 +36,11 @@ const start = async () => {
         },
         autoHideMenuBar: true
     });
-    win.loadURL('http://localhost:5173');
+    win.loadFile(path.join(__dirname, '../../dist/index.html'));
+    
+    server.notify = (message: string, type: "success" | "error" | "warning") => {
+        win.webContents.send('notification', message, type);
+    }
 
     ipcMain.handle('get-auth-state', async () => {
         try {
