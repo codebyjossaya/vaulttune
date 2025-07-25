@@ -48,7 +48,6 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   const endOfSongRef = useRef<boolean>(true);
   const currentlyPlayingRef = useRef<Song | null>(currentlyPlaying);
   const currentPlaylistRef = useRef<Playlist | null>(currentPlaylist);
-  const songStartRef = useRef<boolean>(false);
   const roomsRef = useRef<Room[]>(rooms);
 
 
@@ -112,7 +111,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
   function playSong(song: Song) {
     console.log(song)
-    songStartRef.current = false; // reset songStartRef to false to allow new song to be played
+   
     if (currentlyPlaying) {
         if (currentlyPlaying.id == song.id) return;
         else {
@@ -282,6 +281,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
         useEffect(() => {
             function songDataListener(song: Song, total_chunks: number) {
+
                 // record the total number of chunks
                 console.log(`Total chunks: ${total_chunks}`)
                 chunkCounterRef.current = total_chunks;
@@ -338,14 +338,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
                     // need to investigate first time playing issue HERE.
                     source.addEventListener('sourceopen', () => {
-                        console.log("Source opened, setting up source buffer");
-                        if (!songStartRef.current) {
-                            console.log("Song start event received, setting songStartRef to true");
-                            songStartRef.current = true;
-                        } else {
-                            console.log("Song start event already received, skipping setup");
-                            return;
-                        }
+                        console.log("Source opened, setting up source buffer");-
                         console.log("Source opened, creating source buffer");
                         source!.duration = song.metadata.format.duration;
                         const buf = source!.addSourceBuffer(getMimeType(song));
@@ -379,7 +372,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         socket.removeAllListeners(`song data ${song.id}`); // remove any previous listeners for this song
                         socket.on(`song data ${song.id}`, songChunkListener);
                         // this event is sent in a non timely manner
-                        socket.emit(`song data ready ${song.id}`);
+                        socket.emit(`song data ready`, room?.id, song.id);
+                        
                         
 
                         
@@ -393,6 +387,21 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 socket.removeListener("song data start", songDataListener);
             }
         });
+
+        useEffect(() => {
+            if (audioRef.current && currentlyPlaying) {
+                audioRef.current?.addEventListener('seeked', () => {
+                    socket.emit(`song seeked`, room?.id, audioRef.current!.currentTime);
+                });
+                socket.on(`song seeked`, (time: number) => {
+                    if (audioRef.current) {
+                        audioRef.current.currentTime = time;
+                        console.log(`Seeked to ${time} seconds`);
+                    }
+                });
+            }
+
+        }, [audioRef.current]);
 
         useEffect(() => {
             if(currentlyPlaying) {

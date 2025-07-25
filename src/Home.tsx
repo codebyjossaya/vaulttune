@@ -22,7 +22,6 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
   // const headerRef = useRef<HTMLDivElement>(null);
   // const socketRef = useRef<Socket | undefined>(socket);
   // needs to only exist within this scope
-
   async function fetchVaults() {
     setLoading("Getting vaults...");
     fetch("https://api.jcamille.tech/vaulttune/user/vaults/get", {
