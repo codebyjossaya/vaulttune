@@ -19,7 +19,6 @@ import { initializeRPC } from "../helpers/discordRichPresence";
 import { registerVault } from "../helpers/registerVault";
 import cors from 'cors';
 import type * as localtunnel from "localtunnel";
-import updateVaultStatus from "../helpers/updateVaultStatus";
 import type { UserRecord } from "firebase-admin/auth";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import type Song from "./song";
@@ -180,10 +179,8 @@ export default class Server {
                 });
             });
         }
-        console.log("Registering this Vault with VaultTune servers...");
-        await registerVault(this);
-        console.log("Appearing online on VaultTune servers...");
-        await updateVaultStatus(this,"online");
+        console.log("Registering this Vault and appearing online with VaultTune servers...");
+        await registerVault(this, "online");
 
         console.log("Initializing Discord Rich Presence");
         this.rpc = await initializeRPC();
@@ -198,7 +195,8 @@ export default class Server {
                 console.log(this.options.token ? "Vault token is set. Proceeding to update VaultTune status..." : "Vault token is not set. Skipping status update.");
                 // eslint-disable-next-line @typescript-eslint/no-unused-expressions
                 if (this.options.token) {
-                    updateVaultStatus(this, error ? "error" : "offline").then(() => {
+                    this.address = null;
+                    registerVault(this, "offline").then(() => {
                         console.log("VaultTune status updated successfully.");
                     }).catch((err) => {
                         console.error("Error updating VaultTune status:", err);
@@ -310,8 +308,8 @@ export default class Server {
         return true;
     }
 
-    async register() {
-        await registerVault(this);
+    async register(status: "online" | "offline" = "offline") {
+        await registerVault(this, status);
         console.log("Vault registered successfully with VaultTune servers.");
     }
     async export() {

@@ -52,7 +52,7 @@ export const SideOverlay: React.FC<SideOverlayProps> = ({
                         : isMobile
                         ? "translateY(100%)"
                         : "translateX(100%)",
-                    width: isMobile ? "100%" : "30vw",
+                    width: isMobile ? "100%" : "50vw",
                 }}
                 onClick={e => e.stopPropagation()}
             >

@@ -37,7 +37,7 @@ export function getAuthState(): Promise<AuthState> {
             } else {
                 const data: { content: object} = await response.json();
                 console.log("Existing VaultTune token verified successfully:", data);
-                await server.register();
+                server.state === "online" ? null : server.register();
                 resolve({ authenticated: true, ...data });
                 return;
             }

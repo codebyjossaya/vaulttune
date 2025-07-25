@@ -87,7 +87,7 @@ ipcMain.handle('set-server-settings', async (event, settings) => {
         console.log("Server settings updated:", server.options);
         
         console.log("Updating server settings in ", server.options.api);
-        server.register();
+        server.state == 'offline' ? server.register() : server.register("online");
         return true;
     } catch (error) {
         console.error("Error setting server settings:", error);

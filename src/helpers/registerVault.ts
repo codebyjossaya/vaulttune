@@ -1,6 +1,6 @@
 import Server from "../classes/server";
 import { readFileSync } from "fs";
-export function registerVault(t: Server) {
+export function registerVault(t: Server, status: "online" | "offline"): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         try {
             const vault_name = t.options.name;
@@ -13,6 +13,7 @@ export function registerVault(t: Server) {
                     token: t.options.token,
                     vault_name,
                     tunnel_url: t.address || null,
+                    status,
                 })
             }).then(response => {
                 if (!response.ok) {
@@ -21,6 +22,7 @@ export function registerVault(t: Server) {
                 return response.json();
             }).then(data => {
                 console.log("Vault registered successfully:", data);
+                t.state = status;
                 resolve();
             }).catch(error => {
                 console.error( error);
