@@ -4,7 +4,7 @@ import {getAuth, Auth} from "firebase-admin/auth";
 import {Database, getDatabase} from "firebase-admin/database";
 import pkg from 'jsonwebtoken';
 import { readFileSync } from "node:fs";
-import { serverToken, userVault, Vault } from "./types";
+import { serverToken, userVault, UserVaultData, Vault } from "./types";
 import cors from 'cors';
 const { sign, verify } = pkg;
 
@@ -117,28 +117,6 @@ export class Server {
                 }
             });
             // # Vault routes
-            // update vault status
-            this.app.post('/vaulttune/vault/status', async (req: express.Request, res: express.Response) => {
-                console.log(`Request to update Vault status received`)
-                try {
-                    const { vault_token, status } = req.body;
-                    if (!vault_token || !status) {
-                        throw new Error("Vault token and status are required");
-                    }
-                    console.log(`Authenticating Vault...`)
-                    const server_token = verifyServer(vault_token);
-                    console.log(`Vault ${server_token.id} authenticated! Updating status to ${status}`)
-                    // Get reference to the vault in the database
-                    const vaultRef = this.database.ref(`/vaults/${server_token.id}`);
-                    // Update the vault's status
-                    await vaultRef.update({ status });
-                    res.json({status: "success", message: "Vault status updated successfully"});
-                    console.log("Vault status update was successful!")
-                } catch (error: any) {
-                    console.log(error)
-                    res.status(400).json({status: "failed", error: error.message});
-                }
-            });
             this.app.post('/vaulttune/vault/getUsers', async (req: express.Request, res: express.Response) => {
                 try {
                     console.log(`Request to get Vault users received`)
@@ -206,7 +184,7 @@ export class Server {
                 console.log(`Request to register Vault received`)
                 try {
 
-                    const { vault_name, tunnel_url, token } = req.body;
+                    const { vault_name, tunnel_url, token, status = "offline" } = req.body;
                     if (!vault_name || !token) {
                         throw new Error("Vault name and token are required");
                     }
@@ -224,7 +202,7 @@ export class Server {
                     const userVaultRef = this.database.ref(`/users/${server_token.user.uid}/vaults/${server_token.id}`);
                     // Register the vault with the user's vaults
                     console.log(`Adding Vault to User ${server_token.user.uid}'s profile`)
-                    userVaultRef.set({ vault_name, id: server_token.id });
+                    userVaultRef.set({ vault_name, id: server_token.id, status });
                     // Get global vault data
                     const vaultSnapshot = await vaultRef.once('value');
                     
@@ -234,7 +212,7 @@ export class Server {
                             // if not, create a new vault entry
                             console.log(`Performing first-time Vault registration`)
                             const users: string[] = [server_token.user.uid];
-                            vaultRef.set({ vault_name, tunnel_url, users, id: server_token.id });
+                            vaultRef.set({ vault_name, tunnel_url, users, id: server_token.id, status });
                         } else {
                             console.log(`Vault is already registered...updating Vault accordingly`)
                             // if it exists, update the vault entry with the new tunnel URL and add the user if not already present
@@ -274,7 +252,7 @@ export class Server {
                     // Remove the vault from the user's vaults
                     await userVaultRef.remove();
                     // Remove the user from the vault's users list
-                    const existingData = vaultSnapshot.val();
+                    const existingData: Vault = vaultSnapshot.val();
                     const usersList = Array.isArray(existingData.users) ? existingData.users : [];
                     const updatedUsersList = usersList.filter((user: any) => user !== user_token_data.uid);
                     if (updatedUsersList.length === 0) {
@@ -317,38 +295,31 @@ export class Server {
                         ;
                         return;
                     }
-                    const data = snapshot.val();
-                    data.requests = null;
-                    console.log(data);
-                    const filteredData = Object.values(data).filter((vault) => vault !== null);
-                    if (filteredData.length === 0) {
-                        console.error(`User ${user_token_data.uid} has no vaults`)
-                        res.json({status: "success", vaults: []});
-                        ;
-                        return;
-                    }
-                    const vaults: Vault[] = filteredData as Vault[];
+                    const vaults: UserVaultData = snapshot.val();
                     
                     console.log(`User ${user_token_data.uid} has the following Vaults:`, vaults);
                     console.log(`Adding status to vaults...`)
                     // Add status to each vault
-                    for (const vault of vaults) {
-                        const vaultRef = this.database.ref(`/vaults/${vault.id}`);
+                    for (const vaultID of Object.keys(vaults)) {
+                        if (vaultID === 'requests') continue; // Skip requests
+                        const vault = vaults[vaultID] as userVault;
+                        const vaultRef = this.database.ref(`/vaults/${vaultID}`);
                         const vaultSnapshot = await vaultRef.once('value');
                         if (vaultSnapshot.exists()) {
                             const vaultData = vaultSnapshot.val();
-                            vault.status = vaultData.status || "unknown"; // Default to "unknown" if status is not set
-                        } else {
-                            vault.status = "not found"; // If the vault does not exist
+                            vault.status = vaultData.status || "offline"; // Default to "offline" if status
+                        }
+                        else {
+                            vault.status = "offline"; // If vault not found, set status to "offline"
                         }
                     }
+                    
                     console.log(`User Vault list request fulfilled!`)
                     res.json({status: "success", vaults});
-                    ;
+                    
                 } catch (error: any) {
                     console.log(error)
                     res.status(400).json({status: "failed", error: error.message});
-                    ;
                 }
             });
             this.app.post('/vaulttune/user/vault/connect', async (req: express.Request, res: express.Response) => {
@@ -417,7 +388,6 @@ export class Server {
                         owner: server_token.user,
                         email: user_email,
                         vault_name: vaultData.vault_name,
-                        status: "pending",
                         created_at: new Date().toISOString(),
                     }
                    
