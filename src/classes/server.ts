@@ -156,8 +156,8 @@ export default class Server {
         console.log("Obtaining tunnel address...");
         if(this.options.network) {
             this.address = await getTunnelAddr(this, port)
-            this.tunnel.on('error', (error) => {
-                console.error("Tunnel error:", error);
+            this.tunnel.on('error', (error: Error) => {
+                console.error("Tunnel error:", error.message);
                 this.state = "error";
                 this.error();
             });
