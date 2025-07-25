@@ -24,6 +24,7 @@ import type Song from "./song";
 import type Playlist from "./playlist";
 import keytar from "keytar";
 import { ipcMain, app } from "electron";
+import { homedir } from "os";
 
 
 export default class Server {
@@ -447,10 +448,10 @@ export default class Server {
             rooms: this.rooms.map(room => room.export())
         }
         const json = JSON.stringify(object, null, 2);
-        if (!existsSync(`${process.env.HOME}/VaultTune/settings`)) {
-            mkdirSync(`${process.env.HOME}/VaultTune/settings`, { recursive: true });
+        if (!existsSync(`${homedir()}/VaultTune/settings`)) {
+            mkdirSync(`${homedir()}/VaultTune/settings`, { recursive: true });
         }
-        writeFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, json);
+        writeFileSync(`${homedir()}/VaultTune/settings/server.json`, json);
         console.log("Server exported successfully to settings/server.json");
     }
     static async fromJSON(data: { user: UserRecord; options: ServerOptions; rooms: { songs: Song[]; playlists: Playlist[]; dirs: string[]; name: string; id: string; }[] }): Promise<Server> {

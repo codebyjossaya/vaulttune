@@ -11,13 +11,16 @@ import { existsSync, readFileSync } from 'fs';
 import keytar from 'keytar'
 import { User } from "../src/types/types";
 import { PendingRequest } from "../src/types/types";
+import { homedir } from 'os';
 
 let server: Server;
 
 
 const start = async () => {
-    if (existsSync(`${process.env.HOME}/VaultTune/settings/server.json`)) {
-        server = await Server.fromJSON(JSON.parse(readFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, 'utf-8')));
+    const serverSettingsPath = path.join(app.getPath('home'), 'VaultTune', 'settings', 'server.json');
+    console.log("Server settings path:", serverSettingsPath);
+    if (existsSync(serverSettingsPath)) {
+        server = await Server.fromJSON(JSON.parse(readFileSync(`${homedir()}/VaultTune/settings/server.json`, 'utf-8')));
         server.register();
     }
     else {

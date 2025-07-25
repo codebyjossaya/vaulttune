@@ -70,5 +70,12 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
+  },
+  "productName": "VaultTune",
+  "build": {
+    "appId": "com.vaulttune",
+    "win": {
+      "target": "squirrel"
+    }
   }
 }

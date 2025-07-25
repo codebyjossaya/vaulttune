@@ -1,10 +1,11 @@
+import { homedir } from "os";
 import { Options } from "../src/types/types";
 import { server } from "./main";
 import { existsSync } from "fs";
 export function getSettings(): Promise<Options> {
     return new Promise<Options | undefined>((resolve, reject) => {
         try {
-            const settingsPath = `${process.env.HOME}/VaultTune/settings/server.json`;
+            const settingsPath = `${homedir()}/VaultTune/settings/server.json`;
             console.log(server.rooms)
             if (existsSync(settingsPath)) {
                 const settings: Options = {

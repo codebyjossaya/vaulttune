@@ -4,6 +4,7 @@ import { shell } from 'electron';
 import keytar from 'keytar';
 import { AuthState } from "../src/types/types";
 import { existsSync, readFileSync, write, writeFileSync } from "fs";
+import { homedir } from "os";
 export function authHandler(event: Electron.IpcMainInvokeEvent, frontend: string = 'https://vaulttune.jcamille.tech') {
     return new Promise<AuthState>((resolve, reject) => {
         try {
@@ -34,11 +35,11 @@ export function authHandler(event: Electron.IpcMainInvokeEvent, frontend: string
                 if (frontend) {
                     server.options.api = api;
                     console.log("Server API set to:", server.options.api);
-                    if (existsSync(`${process.env.HOME}/VaultTune/settings/server.json`)) {
-                        const data = JSON.parse(readFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, 'utf-8'));
+                    if (existsSync(`${homedir()}/VaultTune/settings/server.json`)) {
+                        const data = JSON.parse(readFileSync(`${homedir()}/VaultTune/settings/server.json`, 'utf-8'));
                         data.options.api = api;
                         server.register();
-                        writeFileSync(`${process.env.HOME}/VaultTune/settings/server.json`, JSON.stringify(data, null, 2));
+                        writeFileSync(`${homedir()}/VaultTune/settings/server.json`, JSON.stringify(data, null, 2));
 
                     }
                 }
