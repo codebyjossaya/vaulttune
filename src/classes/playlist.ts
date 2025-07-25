@@ -4,7 +4,7 @@ import Song from "./song";
 export default class Playlist {
     public songs: Song[]
     public name: string;
-    public album_cover: IPicture;
+    public album_cover?: IPicture;
     public id: string;
     constructor(name: string) {
         this.name = name
@@ -15,7 +15,7 @@ export default class Playlist {
         this.songs = [];
     }
     addSong(song: Song) {
-        if(this.songs.length == 0) this.album_cover = song.metadata.common.picture[0]    
+        if(this.songs.length == 0 && song.metadata.common.picture) this.album_cover = song.metadata.common.picture[0]    
         this.songs.push(song)
     }
     removeSong(song: Song) {

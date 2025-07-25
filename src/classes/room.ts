@@ -10,9 +10,9 @@ import { SongError } from "../interfaces/errors";
 export default class Room {
     public id: string;
     public name: string;
-    public members?: Socket[];
-    public songs?: Song[] = [];
-    public playlists?: Playlist[] = [];
+    public members: Socket[];
+    public songs: Song[] = [];
+    public playlists: Playlist[] = [];
     public dirs: string[] = [];
 
     constructor(name: string, id: string | undefined = undefined, songs: Song[] = [], playlists: Playlist[] = []) {
@@ -88,8 +88,8 @@ export default class Room {
                 
             }) 
             return {success: true, error: undefined};
-        } catch(error) {
-            return {success: false, error: error};
+        } catch (error: any) {
+            return {success: false, error: error.message};
         }
     }
     addPlaylist(playlist: Playlist) {

@@ -2,7 +2,6 @@ import { Server as SocketServer, Socket } from "socket.io";
 import Room from "./room";
 import { handleUploadSong } from "../helpers/handle_upload_song";
 import { handleJoinRoom } from "../helpers/handle_join_room";
-import { handlePlaySong } from "../helpers/handle_play_song";
 import { ServerOptions, Options, User } from "../interfaces/types";
 import { handleGetSongs } from "../helpers/handle_get_songs";
 import { createServer, Server as httpServer } from "http";
@@ -35,12 +34,13 @@ export default class Server {
     public rooms: Room[] = [];
     public tunnel: localtunnel.Tunnel | undefined;
     public options: ServerOptions | Options;
-    public address: string;
-    public rpc: Client | undefined;
+    public address: string | null = null;
+    public rpc: Client | null = null;
     public state: "online" | "offline" | "error" = "offline";
     public users: User[] = [];
+    public stoppers: Map<string, NodeJS.Timeout> = new Map();
 
-    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech'}) {
+    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech', token: null}) {
         this.options = options;
         this.app = express();
         this.app.use(cors({
@@ -72,7 +72,100 @@ export default class Server {
             socket.on('leave room', (room_id) => {handleLeaveRoom(this,socket,room_id)});
             // handlers
             socket.on('join room',(id: string) => (handleJoinRoom(this,socket, id)));
-            socket.on('play song', (room_id: string, song_id: string) => { handlePlaySong(this, socket, room_id, song_id)});
+
+            socket.on('play song', (room_id: string, song_id: string) => {
+                console.log(`Device ${socket.id} is requesting song ${song_id} from room ${room_id}`)
+
+                const room: Room | undefined = this.rooms.find((element) => element.id === room_id);
+                if (room === undefined) {
+                    socket.emit("error","Room not found");
+                    return;
+                }
+                const members = room!.getMembers();
+                if (members.find(member => member.id === socket.id) === undefined) {
+                    socket.emit("error","User has not joined this room");
+                    return;
+                }
+                const song = room.songs.find((element: Song) => element.id === song_id);
+                if (song === undefined) {
+                    socket.emit("error","This song does not exist");
+                }
+
+                // add in compression
+                const buf = song!.getBuffer();
+                if (this.rpc) {
+                    this.rpc.setActivity({
+                        details: `Playing ${song.metadata.common.title}`,
+                        state: `by ${song.metadata.common.artist}`,
+                        startTimestamp: new Date(),
+                        instance: false,
+                    })
+                }
+
+                let chunkSize = (buf.byteLength / song.metadata.format.duration) * 0.5;
+                const total_chunks = Math.ceil(buf.byteLength / chunkSize);
+                let timeoutId: NodeJS.Timeout | null = null;
+                console.log(`Song: ${song.metadata.common.title} by ${song.metadata.common.artist} with a chunk size of ${chunkSize} and bytelength of ${buf.byteLength} making ${total_chunks} total chunks`);
+
+                console.log("Exporting song data");
+                const data = song.exportSong();
+                data.path = null;
+
+                console.log(`Sending song data start event for song ${song_id} to room ${room_id}`);
+                this.io.to(room_id).emit("song data start",data,total_chunks);
+                
+            });
+
+            socket.on('song data ready', (room_id: string, song_id: string) => {
+                console.log(`Device ${socket.id} is ready to receive song data for ${song_id}`);
+                const room: Room | undefined = this.rooms.find((element) => element.id === room_id);
+                if (room === undefined) {
+                    socket.emit("error","Room not found");
+                    return;
+                }
+                const song = room.songs.find((element: Song) => element.id === song_id);
+                if (song === undefined) {
+                    socket.emit("error","This song does not exist");
+                    return;
+                }
+                const buf = song.getBuffer();
+                let chunkSize = (buf.byteLength / song.metadata.format.duration) * 0.5;
+                const total_chunks = Math.ceil(buf.byteLength / chunkSize);
+                let offset = 0;
+                let chunk_counter = 0;
+                console.log(`Device ${socket.id} is ready to receive song data for ${song_id}`);
+
+                const sendChunk = () => {
+                    if (offset < buf.byteLength) {
+                        const remainingSize = buf.byteLength - offset;
+                        if (remainingSize < chunkSize) chunkSize = remainingSize
+                        const chunk = buf.slice(offset, Math.min(offset + chunkSize, buf.byteLength));
+                        socket.emit(`song data ${song_id}`, {buffer: chunk, chunk_counter});
+                        offset += chunkSize;
+                        chunk_counter += 1;
+                        console.log(`Sending chunk ${chunk_counter} out of ${total_chunks} of song ${song_id}`);
+                        this.stoppers.set(`${socket.id}-${song_id}`, setTimeout(sendChunk, 10)); // Use setTimeout to avoid blocking the event loop
+                    } else {
+                        console.log("Finished sending song data");
+                        socket.emit("song data end");
+                    }
+                };
+
+                sendChunk();
+            });
+
+            socket.on('stop song', (id: string) => {
+                console.log(`Device ${socket.id} has requested to stop song ${id}`);
+                const timeoutId = this.stoppers.get(`${socket.id}-${id}`);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    this.stoppers.delete(`${socket.id}-${id}`);
+                } else {
+                    socket.emit("error", "No song is currently playing on this device");
+                    return;
+                }
+            });
+
             // add a cancel play song listener1
             socket.on('play song - iOS', (room_id: string, song_id: string) => handleiOSPlaySong(this, socket, room_id, song_id));
             socket.on('upload song', (room_id: string, buf: ArrayBuffer) => {handleUploadSong(this,socket,room_id,buf)});
@@ -156,11 +249,13 @@ export default class Server {
         console.log("Obtaining tunnel address...");
         if(this.options.network) {
             this.address = await getTunnelAddr(this, port)
-            this.tunnel.on('error', (error: Error) => {
-                console.error("Tunnel error:", error.message);
-                this.state = "error";
-                this.error();
-            });
+            if (this.tunnel) {
+                this.tunnel.on('error', (error: Error) => {
+                    console.error("Tunnel error:", error.message);
+                    this.state = "error";
+                    this.error();
+                });
+            }
             console.log("This Vault's address: ", this.address);
         } else {
             await new Promise((resolve, reject) => {
@@ -169,8 +264,8 @@ export default class Server {
                         reject(new Error("Failed to fetch public IP address"));
                     }
                     return response.json();
-                }).then(data => {
-                    this.address = `http://${data.ip}:3000`;
+                }).then((data: {ip: string}) => {
+                    this.address = `http://${data.ip}:${port}`;
                     console.log("This Vault's address: ", this.address);
                     resolve(true);
                 }).catch(error => {
@@ -241,7 +336,7 @@ export default class Server {
                 return;
             }
             const newRoom = new Room(room.name, room.id);
-            room.dirs.forEach(dir => {
+            room.dirs.forEach((dir: string) => {
                 newRoom.addSongDir(dir).catch(err => {
                     console.error(`Error adding song directory ${dir} to room ${newRoom.name}:`, err);
                 });

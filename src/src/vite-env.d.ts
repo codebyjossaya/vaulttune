@@ -4,6 +4,7 @@ import type { PendingRequest } from "../interfaces/types";
 import type { Options } from "./interfaces/types";
 import type { AuthState } from "./types/types";
 
+
 interface ElectronAPI {
   ping: () => string;
   getAuthState: () => Promise<AuthState>;
@@ -19,6 +20,7 @@ interface ElectronAPI {
   startServer: () => Promise<boolean>;
   stopServer: () => Promise<boolean>;
   promptForFolder: () => Promise<string | null>;
+   setNotificationCallback: (callback: (message: string, type: "success" | "error" | "warning") => void) => void;
 
 }
 
@@ -27,4 +29,6 @@ declare global {
     electronAPI: ElectronAPI;
   }
 }
+
+
 

@@ -1,5 +1,5 @@
 import keytar from 'keytar'
-import { AuthState } from 'src/types/types';
+import { AuthState } from "../src/types/types";
 import { server } from './main';
 export function getAuthState(): Promise<AuthState> {
     return new Promise( async (resolve, reject) => {
@@ -35,7 +35,7 @@ export function getAuthState(): Promise<AuthState> {
                 // Remove the invalid token file
                 
             } else {
-                const data: { content: object} = await response.json();
+                const data: any = await response.json();
                 console.log("Existing VaultTune token verified successfully:", data);
                 server.state === "online" ? null : server.register();
                 resolve({ authenticated: true, ...data });

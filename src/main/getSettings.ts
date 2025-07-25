@@ -1,4 +1,4 @@
-import { Options } from "interfaces/types";
+import { Options } from "../src/types/types";
 import { server } from "./main";
 import { existsSync } from "fs";
 export function getSettings(): Promise<Options> {
@@ -16,6 +16,7 @@ export function getSettings(): Promise<Options> {
                     network: server.options.network,
                     name: server.options.name || "Untitled Vault",
                     api: server.options.api,
+                    token: server.options.token
                 };
                 resolve(settings);
             } else {

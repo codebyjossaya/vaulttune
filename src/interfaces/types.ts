@@ -1,5 +1,4 @@
-import { UserRecord } from "node_modules/firebase-admin/lib/auth";
-import { Room } from "src/types/types";
+import { UserRecord } from "firebase-admin/auth"
 export enum SongStatus {
     UPLOADED = 'UPLOADED',
     SYSTEM = 'SYSTEM',
@@ -8,7 +7,7 @@ export enum SongStatus {
 export class ServerOptions {
     public network?: boolean;
     public name?: string | "Untitled Vault";
-    public token?: string;
+    public token: string | null;
     public api?: string;
 }
 
@@ -36,4 +35,10 @@ export class PendingRequest {
     public status: 'pending' | 'accepted' | 'rejected';
     public created_at: string;
     public email: string;
+}
+
+export interface Room {
+    id?: string;
+    name: string;
+    dirs: string[];
 }

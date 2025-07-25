@@ -1,7 +1,6 @@
 import { contextBridge } from 'electron';
 import { ipcRenderer } from 'electron';
-import { Options } from 'src/types/types';
-
+import { Options } from "../src/types/types";
 
 contextBridge.exposeInMainWorld('electronAPI', {
   ping: () => 'pong',
@@ -18,8 +17,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startServer: () => ipcRenderer.invoke('start-server'),
   stopServer: () => ipcRenderer.invoke('stop-server'),
   promptForFolder: () => ipcRenderer.invoke('prompt-for-folder'),
+  setNotificationCallback: (callback: (message: string, type: "success" | "error" | "warning") => void) => {
+    console.log("Setting notification callback");
+    ipcRenderer.on('notification', (event, message, type) => {
+      callback(message, type);
+    });
+  }
 });
 
-ipcRenderer.on('error', (event, ...args) => {
-  console.log('Received error event:', event, args);
-});

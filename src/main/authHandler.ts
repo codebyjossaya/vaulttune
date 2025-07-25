@@ -2,7 +2,7 @@ import { server } from "./main";
 import express from 'express';
 import { shell } from 'electron';
 import keytar from 'keytar';
-import { AuthState } from "src/types/types";
+import { AuthState } from "../src/types/types";
 import { existsSync, readFileSync, write, writeFileSync } from "fs";
 export function authHandler(event: Electron.IpcMainInvokeEvent, frontend: string = 'https://vaulttune.jcamille.tech') {
     return new Promise<AuthState>((resolve, reject) => {

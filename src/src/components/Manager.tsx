@@ -13,7 +13,6 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const [roomName, setRoomName] = useState<string>("");
     const [currentVaultName, setCurrentVaultName] = useState<string>(settings.name || "Untitled Vault");
     const [vaultName, setVaultName] = useState<string>(settings.name || "Untitled Vault");
-    const [roomDirs, setRoomDirs] = useState<string[]>([]);
     const [roomFolder, setRoomFolder] = useState<string | null>(null);
     const [loading, setLoading] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -31,6 +30,13 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const playerCardRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        console.log("Manager component mounted");
+        window.electronAPI.setNotificationCallback((message, type) => {
+            console.log("Notification received:", message, type);
+            setNotification({ message, type });
+        });
+    }, []);
     function changeSettings() {
         console.log("Changing settings...");
         if (!settings) {
@@ -184,6 +190,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
         setRoomOverlay(undefined);
         setRoomName("");
         setRoomFolder(null);
+        
     };
     const cancelRequest = (email: string) => {
         setLoadingOverlay("Cancelling request...");
@@ -305,6 +312,11 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
                     onChange={(e) => {
                         // Handle email input change
                         setUserEmail(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            addUser();
+                        }
                     }}
                     value={userEmail}
                 />
