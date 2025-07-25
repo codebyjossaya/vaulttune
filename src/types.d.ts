@@ -27,13 +27,6 @@ export interface SongChunk {
     chunk_counter: number
 }
 
-export interface Vault {
-    tunnel_url: string;
-    users: string[];
-    vault_name: string;
-    id: string;
-    status: "online" | "offline" | "error";
-}
 
 export interface PlayerConfig {
     socket: Socket | undefined;
@@ -42,11 +35,22 @@ export interface PlayerConfig {
     signOut: () => Promise<void>;
 }
 
-export interface PendingRequest {
+
+export interface userVault {
+    id: string;
+    vault_name: string;
+    status: string;
+}
+
+
+export interface VaultRequest {
     vault_id: string;
-    owner: User;
+    owner: UserRecord;
     email: string;
     vault_name: string;
-    status: "pending" | "accepted" | "rejected";
     created_at: string;
+}
+export interface UserVaultData {
+    requests: VaultRequest[];
+    [vaultId: string]: userVault;
 }

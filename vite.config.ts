@@ -15,6 +15,6 @@ export default defineConfig({
     minify: false,
   },
   server: {
-    allowedHosts: true,
+    port: 5174,
   }
 })

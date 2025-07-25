@@ -4,7 +4,7 @@ import { Loading } from './components/Loading';
 import { Overlay } from './components/Overlay';
 import VaultTunePlayer from './components/Player';
 import { User } from 'firebase/auth';
-import { PendingRequest, Vault } from './types';
+import { VaultRequest, UserVaultData, userVault } from './types';
 import { SideOverlay } from './components/SideOverlay';
 
 
@@ -14,38 +14,15 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
   const [loading, setLoading] = useState<false | string>(false);
   const [connected, setConnected] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [vaults, setVaults] = useState<Vault[]>([]);
-  const [currentVault, setCurrentVault] = useState<Vault | undefined>(undefined);
+  const [vaults, setVaults] = useState<userVault[]>([]);
+  const [currentVault, setCurrentVault] = useState<userVault | undefined>(undefined);
   const [sideOverlay, setSideOverlay] = useState<React.ReactElement | null>(null);
-  const [receivedInvites, setReceivedInvites] = useState<PendingRequest[]>([]); // Adjust type as needed
+  const [receivedInvites, setReceivedInvites] = useState<VaultRequest[]>([]); // Adjust type as needed
   const [receivedInvitesOverlay, setReceivedInvitesOverlay] = useState<boolean>(false);
   // const headerRef = useRef<HTMLDivElement>(null);
   // const socketRef = useRef<Socket | undefined>(socket);
   // needs to only exist within this scope
 
-  async function fetchReceivedInvites() {
-
-    fetch("https://api.jcamille.tech/vaulttune/user/vault/requests", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ user_token: await user?.getIdToken() }),
-    }).then(async (response) => {
-    if (!response.ok) {
-        console.error("Failed to fetch received invites:", response.statusText);
-        setError(`Failed to fetch received invites: ${response.statusText}`);
-        return;
-      }
-      const data = await response.json();
-      console.log("Received invites fetched successfully:", data);
-      setReceivedInvites(data.requests || []);
-      // You can handle the user data here if needed
-    }).catch((error) => {
-      console.error("Error fetching received invites:", error);
-      setError("Failed to fetch received invites");
-    });
-  }
   async function fetchVaults() {
     setLoading("Getting vaults...");
     fetch("https://api.jcamille.tech/vaulttune/user/vaults/get", {
@@ -57,13 +34,19 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
         user_token: await user!.getIdToken(),
       }),
     }).then(async (response) => {
-      
-      const data = await response.json();
-      if (!response.ok) {
+
+      const data: {status: "success" | "failed", vaults?: UserVaultData, error?: string} = await response.json();
+      if (!response.ok && data.error && !data.vaults) {
         setError(`Failed to fetch vaults: ${data.error}`);
       } else {
         console.log("Vaults fetched successfully:", data.vaults);
-        setVaults(Object.values(data.vaults));
+       
+        const vaults: userVault[] = Object.keys(data.vaults || {}).map((key) => {
+          if (key === "requests") return null; // Skip the requests key
+          else return data.vaults![key];
+        }).filter((vault): vault is userVault => vault !== null); // Filter out null
+        setVaults(vaults);
+        setReceivedInvites(data.vaults!.requests || []);
       }
       setLoading(false);
       
@@ -116,7 +99,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
     });
   }
 
-  async function unregisterVault(vault: Vault) {
+  async function unregisterVault(vault: userVault) {
     if (!vault) {
       setError("Vault ID is required to unregister");
       return;
@@ -174,7 +157,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-      },
+      },    
       body: JSON.stringify({
         user_token: await user!.getIdToken(),
         vault_id: vaultId,
@@ -188,7 +171,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
     }).then(data => {
       console.log("Invite accepted successfully:", data);
       // Refresh the received invites list after accepting
-      fetchReceivedInvites();
+      fetchVaults();
       setLoading(false);
       setReceivedInvitesOverlay(false);
     }).catch(error => {
@@ -233,7 +216,6 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
   useEffect(() => {
     if (user) {
       fetchVaults();
-      fetchReceivedInvites();
     }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
