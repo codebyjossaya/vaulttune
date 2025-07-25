@@ -36,7 +36,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
     }).then(async (response) => {
 
       const data: {status: "success" | "failed", vaults?: UserVaultData, error?: string} = await response.json();
-      if (!response.ok && data.error && !data.vaults) {
+      if (!response.ok || data.error && !data.vaults) {
         setError(`Failed to fetch vaults: ${data.error}`);
       } else {
         console.log("Vaults fetched successfully:", data.vaults);
@@ -46,7 +46,10 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
           else return data.vaults![key];
         }).filter((vault): vault is userVault => vault !== null); // Filter out null
         setVaults(vaults);
-        setReceivedInvites(data.vaults!.requests || []);
+        if (data.vaults && data.vaults.requests) {
+          setReceivedInvites(Object.values(data.vaults!.requests) || []);
+        }
+        
       }
       setLoading(false);
       
