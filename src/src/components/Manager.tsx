@@ -146,8 +146,6 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
         }
     }, [requestsOverlay]);
     
-
-    
     
     const addRoomFolder = async () => {
         const folder = await window.electronAPI.promptForFolder();
@@ -433,8 +431,8 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
 
     useEffect(() => {
         if (infoRef.current && playerCardRef.current && headerRef.current) {
-            const headerPlayerDistance = Math.abs(headerRef.current.getBoundingClientRect().bottom - playerCardRef.current.getBoundingClientRect().top);
-            infoRef.current.style.height = headerPlayerDistance + 'px';
+            const newHeightPercent = Math.min(0.8, 1 - ((headerRef.current.getBoundingClientRect().height + infoRef.current.getBoundingClientRect().height) / window.innerHeight));
+
             for (const child of infoRef.current.children) {
                 (child as HTMLElement).style.marginTop = '0px';
             }
@@ -443,6 +441,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
                 const { width, height } = entry.contentRect;
                 setDivSize({ width, height });
             }
+            playerCardRef.current!.style.height = `${newHeightPercent * 100}vh`;
         });
         resizeObserver.observe(playerCardRef.current);
         return () => {

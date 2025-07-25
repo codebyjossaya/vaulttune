@@ -37,6 +37,7 @@ export function handlePlaySong(t: Server, socket: Socket, room_id: string, song_
     console.log(`Song: ${song.metadata.common.title} by ${song.metadata.common.artist} with a chunk size of ${chunkSize} and bytelength of ${buf.byteLength} making ${total_chunks} total chunks`)
     console.log("Exporting song data");
     const data = song.exportSong();
+    data.path = null;
     socket.emit("status","playing song")
     console.log(`Sending song data start event for song ${song_id} to device ${socket.id}`);
     socket.emit("song data start",data,total_chunks)

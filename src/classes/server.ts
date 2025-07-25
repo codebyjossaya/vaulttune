@@ -179,8 +179,9 @@ export default class Server {
                 });
             });
         }
-        console.log("Registering this Vault and appearing online with VaultTune servers...");
-        await registerVault(this, "online");
+        console.log("Registering this Vault with VaultTune servers...");
+        await this.register("online");
+        console.log("VaultTune server started successfully");
 
         console.log("Initializing Discord Rich Presence");
         this.rpc = await initializeRPC();
