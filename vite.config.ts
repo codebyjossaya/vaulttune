@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     noDiscovery: true,
-    include: ['react','react-dom','react-google-button','react-dom/client']
+    include: ['react','react-dom','react-google-button','react-dom/client','music-metadata', ]
   },
   build: {
     commonjsOptions: {

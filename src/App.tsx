@@ -96,7 +96,7 @@ function App() {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token, api: "https://api.jcamille.tech" }),
+            body: JSON.stringify({ token, api: "https://api.vaulttune.jcamille.dev" }),
           }).then(async (response) => {
             if (!response.ok) {
               setCallbackState("fail");

@@ -56,7 +56,7 @@ h1 {
   line-height: 1.1;
 }
 
-button {
+button, input[type="file"]::file-selector-button  {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -78,19 +78,6 @@ button.danger:hover {
 }
 
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-
-}
 
 @keyframes gradient-shift {
   0% { background-position: 0% 50%; }

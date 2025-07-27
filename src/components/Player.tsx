@@ -35,6 +35,10 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   const [playlistView, setPlaylistView] = useState<Playlist | null>(null);
   const [nextUp, setNextUp] = useState<Song | null>(null);
   const [iosDialog, setIosDialog] = useState<boolean>(isOniOS(window));
+  const [createPlaylistView, setCreatePlaylistView] = useState<boolean>(false);
+  const [loadingDialog, setLoadingDialog] = useState<string | null>(null);
+  const [selectedSongs, setSelectedSongs] = useState<Song[]>([]);
+  const [playlistName, setPlaylistName] = useState<string>("");
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const playingRef = useRef<HTMLDivElement>(null);
@@ -49,6 +53,9 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   const currentlyPlayingRef = useRef<Song | null>(currentlyPlaying);
   const currentPlaylistRef = useRef<Playlist | null>(currentPlaylist);
   const roomsRef = useRef<Room[]>(rooms);
+  const seekedRef = useRef<boolean>(false);
+  const pausedRef = useRef<boolean>(false);
+  const playedRef = useRef<boolean>(false);
 
 
   const socket = config.socket!;
@@ -274,6 +281,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             socket.removeAllListeners('song playlist - iOS');
             socket.removeAllListeners("song data end")
             socket.removeAllListeners("song data")
+            socket.removeAllListeners('error');
             
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -295,6 +303,20 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     setCurrentlyPlaying(null); // clear currently playing song
                 }
                 // process currently playing song
+                // add multiple artists if needed
+                if(song.metadata.common.artists.length > 1) {
+                    song.artist_str = ""
+                    const artists: [] = song.metadata.common.artists;
+                    artists.forEach((artist, index) => {
+                        console.log(index)
+                        if(index == artists.length - 1) song.artist_str += `, and ${artist}`;
+                        else {
+                            if(artist != "") song.artist_str += artist + ", "
+                        }
+                    })
+                } else {
+                    song.artist_str = song.metadata.common.artist;
+                }
                 setCurrentlyPlaying(song);
                 // ensure songLoadedRef is set to false
                 
@@ -389,37 +411,84 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         });
 
         useEffect(() => {
+
+            const seeked = () => {
+                console.log("Seeked to", audioRef.current!.currentTime);
+                if (seekedRef.current) {
+                    console.log("Seeked event already handled, ignoring");
+                    return; // prevent multiple seeks
+                }
+                socket.emit(`song seeked`, room?.id, audioRef.current!.currentTime);
+            }
+               
+            const paused = () => { 
+                if (pausedRef.current) {
+                    console.log("Paused event already handled, ignoring");
+                    return; // prevent multiple pauses
+                }
+                socket.emit(`song pause`, room?.id);
+            }
+            const played = () => {
+                if (playedRef.current) {
+                    console.log("Played event already handled, ignoring");
+                    return; // prevent multiple plays
+                }
+                socket.emit(`song play`, room?.id);
+            }
             if (audioRef.current && currentlyPlaying) {
-                audioRef.current?.addEventListener('seeked', () => {
-                    socket.emit(`song seeked`, room?.id, audioRef.current!.currentTime);
-                });
-                socket.on(`song seeked`, (time: number) => {
-                    if (audioRef.current) {
+                audioRef.current.addEventListener('seeked', seeked);
+                audioRef.current.addEventListener('pause', paused);
+                audioRef.current.addEventListener('play', played);
+
+                socket.on(`song seeked`, (id: string, time: number) => {
+                    if (audioRef.current && id !== socket.id) {
                         audioRef.current.currentTime = time;
-                        console.log(`Seeked to ${time} seconds`);
+                        console.log(`Received seek event to ${time} seconds`);
+                        seekedRef.current = true; // prevent multiple seeks
+                        setTimeout(() => {
+                            seekedRef.current = false; // reset after a short delay
+                        }, 100); // adjust delay as needed
                     }
                 });
+                socket.on(`song paused`, (id: string) => {
+                    if (audioRef.current && id !== socket.id) {
+                        audioRef.current.pause();
+                        console.log("Song paused by another user");
+                        pausedRef.current = true; // prevent multiple pauses
+                        setTimeout(() => {
+                            pausedRef.current = false; // reset after a short delay
+                        }, 100); // adjust delay as needed
+                    }
+                });
+                socket.on(`song played`, (id: string) => {
+                    if (audioRef.current && id !== socket.id) {
+                        audioRef.current.play();
+                        console.log("Song played by another user");
+                        playedRef.current = true; // prevent multiple plays
+                        setTimeout(() => {
+                            playedRef.current = false; // reset after a short delay
+                        }, 100); // adjust delay as needed
+                    }
+                });
+                
             }
 
-        }, [audioRef.current]);
+            return () => {
+                if (audioRef.current) {
+                    audioRef.current.removeEventListener('seeked', seeked);
+                    audioRef.current.removeEventListener('pause', paused);
+                    audioRef.current.removeEventListener('play', played);
+                }
+                socket.removeAllListeners(`song seeked`);
+                socket.removeAllListeners(`song pause`);
+                socket.removeAllListeners(`song play`);
+            }
+
+        }, [currentlyPlaying, room?.id, socket]);
 
         useEffect(() => {
             if(currentlyPlaying) {
                 playerRef.current!.style.height = `calc(${isOniOS(window) ? `${0.8 * window.innerHeight}px` : "80vh" } - ${playingRef.current!.offsetHeight}px)`
-                // add multiple artists if needed
-                if(currentlyPlaying.metadata.common.artists.length > 1) {
-                    currentlyPlaying.artist_str = ""
-                    const artists: [] = currentlyPlaying.metadata.common.artists;
-                    artists.forEach((artist, index) => {
-                        console.log(index)
-                        if(index == artists.length - 1) currentlyPlaying.artist_str += `, and ${artist}`;
-                        else {
-                            if(artist != "") currentlyPlaying.artist_str += artist + ", "
-                        }
-                    })
-                } else {
-                    currentlyPlaying.artist_str = currentlyPlaying.metadata.common.artist;
-                }
             } else {
                 if(playerRef.current) {
                     playerRef.current!.style.height = ``;
@@ -439,7 +508,13 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             <button onClick={() => {
                 console.log("upload dialog");
                 enableUploadDialog(true)
-                }}>Upload song</button>
+                }}>Upload song
+            </button>
+            <button onClick={() => {
+                console.log("Creating playlist");
+                setCreatePlaylistView(true);
+            }}>Create playlist
+            </button>
         </>
     )
     const player = (
@@ -456,7 +531,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             }
             // if the user presses space, toggle play/pause
             if (e.key === " ") {
-                e.preventDefault();
+               
                 setPlayState(!playing);
             }
         }}>
@@ -571,6 +646,75 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     </div>
                 
             </SideOverlay>
+            ) : null}
+            { createPlaylistView ? (
+                <>
+                    <SideOverlay isOpen={createPlaylistView} onClose={() => setCreatePlaylistView(false)}>
+                        <div className='create-playlist-view'>
+                            {loadingDialog ? (<Loading text={loadingDialog} />) : (
+                                <>
+                                    <h1>Create a new playlist</h1>
+                                    <input type='text' className='text_input' placeholder='Playlist name' id='playlist-name' onChange={(e) => setPlaylistName(e.target.value)} />
+                                    <div className='mini-player-card'>
+                                        <div className='player-card'>
+                                            {songs && songs.length > 0 ? (
+                                                songs.map((song) => {
+                                                    const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
+                                                    const picture = song.metadata.common.picture;
+                                                    // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
+                                                    let string_char;
+                                                    if(picture) {
+                                                        const coverArr = new Uint8Array(picture[0].data);
+                                                        string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
+                                                    }
+                                                    const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
+                                                    return (
+                                                        <div className='player-list-item' key={song.id} onClick={() => {
+                                                            if (selectedSongs.includes(song)) {
+                                                                setSelectedSongs(selectedSongs.filter(s => s.id !== song.id));
+                                                            } else {
+                                                                setSelectedSongs([...selectedSongs, song]);
+                                                            }
+                                                        }}>
+                                                            <input className='checkbox' type='checkbox' checked={selectedSongs.includes(song)} />
+                                                            {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
+                                                            <p className='song-title'>{song.metadata.common.title}</p>
+                                                            <p className='song-artist'>{song.metadata.common.artist}</p>
+                                                            <p className='song-duration'>{song_duration}</p>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p>No songs available</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <button onClick={() => {
+                                                if (playlistName.trim() === "") {
+                                                    setError("Playlist name cannot be empty");
+                                                    return;
+                                                }
+                                                if (selectedSongs.length === 0) {
+                                                    setError("Please select at least one song");
+                                                    return;
+                                                }
+                                                setLoadingDialog("Creating playlist...");
+                                                socket.emit('create playlist', room!.id, playlistName, [...selectedSongs.map(song => song.id)]);
+                                                socket.once('playlists', () => {
+                                                    setLoadingDialog(null);
+                                                    setCreatePlaylistView(false);
+                                                    setSelectedSongs([]);
+                                                    setPlaylistName("");
+                                                });
+                                                
+                                            }}>Create</button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </SideOverlay>
+                </>
             ) : null}
             <Header ref={headerRef}>
             <p><strong>Room {room?.name}</strong></p>
