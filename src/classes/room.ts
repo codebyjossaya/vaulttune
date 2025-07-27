@@ -115,6 +115,7 @@ export default class Room {
         const songs: Song[] = [];
         const playlists: Playlist[] = [];
         for(const song of data.songs) {
+            console.log(`Creating song from path: ${song.path} with id: ${song.id}`);
             songs.push(await Song.create(SongStatus.SYSTEM, null, {path: song.path, id: song.id}));
         }
         for (const playlist of data.playlists) {

@@ -21,6 +21,7 @@ const start = async () => {
     console.log("Server settings path:", serverSettingsPath);
     if (existsSync(serverSettingsPath)) {
         server = await Server.fromJSON(JSON.parse(readFileSync(`${homedir()}/VaultTune/settings/server.json`, 'utf-8')));
+        console.log("Server settings loaded from file:", server.options);
         server.register();
     }
     else {
@@ -87,13 +88,13 @@ const start = async () => {
     ipcMain.handle('set-server-settings', async (event, settings) => {
         try {
             console.log("Setting server settings..");
-            await server.setOptions(settings);
+            await server.setOptions({...settings, api: server.options.api || 'https://api.vaulttune.jcamille.dev', token: settings.token || null});
             console.log(path.join(__dirname, '../config.json'))
             await server.export();
             console.log("Server settings updated:", server.options);
             
             console.log("Updating server settings in ", server.options.api);
-            server.state == 'offline' ? server.register() : server.register("online");
+            server.state == 'offline' ? await server.register() : await server.register("online");
             return true;
         } catch (error) {
             console.error("Error setting server settings:", error);
@@ -246,13 +247,6 @@ const start = async () => {
         if (process.platform !== 'darwin') {
             server.stop().then(() => {
                 console.log("Server stopped successfully.");
-            })
-        };
-    });
-    app.on('window-all-closed', () => {
-        if (process.platform !== 'darwin') {
-            server.stop().then(() => {
-                console.log("Server stopped successfully.");
                 app.quit();
             }).catch((error) => {
                 console.error("Error stopping server on app close:", error);
@@ -260,7 +254,6 @@ const start = async () => {
             });
         }
     });
-
 
 };
 

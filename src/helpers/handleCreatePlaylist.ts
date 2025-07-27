@@ -20,14 +20,18 @@ export function handleCreatePlaylist(t: Server, socket: Socket, room_id: string,
     // create the playlist and get the songs
     const playlist = new Playlist(name);
     for (const song_id of song_ids) {
+        console.log(`Adding song ${song_id} to playlist ${name}`);
         const song = room.songs.find((element: Song) => element.id === song_id);
+
         if (song === undefined) {
+            console.error(`Song ${song_id} does not exist in room ${room_id}`);
             socket.emit("error",`song ${song_id} does not exist`);
             continue;
         }
         playlist.addSong(song)
     }
     // add the playlist to the room
+    console.log(`Playlist ${name} created with ${playlist.songs.length} songs.`);
     room.addPlaylist(playlist);
 
 }

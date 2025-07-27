@@ -5,7 +5,7 @@ import keytar from 'keytar';
 import { AuthState } from "../src/types/types";
 import { existsSync, readFileSync, write, writeFileSync } from "fs";
 import { homedir } from "os";
-export function authHandler(event: Electron.IpcMainInvokeEvent, frontend: string = 'https://vaulttune.jcamille.tech') {
+export function authHandler(event: Electron.IpcMainInvokeEvent, frontend: string = 'https://vaulttune.jcamille.dev') {
     return new Promise<AuthState>((resolve, reject) => {
         try {
             // Implement your sign-in logic here

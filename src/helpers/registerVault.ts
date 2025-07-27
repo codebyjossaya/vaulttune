@@ -3,8 +3,9 @@ import { readFileSync } from "fs";
 export function registerVault(t: Server, status: "online" | "offline"): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         try {
+            console.log(`Registering vault with status: ${status}`);
             const vault_name = t.options.name;
-            fetch("https://api.jcamille.tech/vaulttune/user/vault/register", {
+            fetch(`${t.options.api}/vaulttune/user/vault/register`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

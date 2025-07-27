@@ -315,7 +315,7 @@ export function InitialSetup({setOptions, authState}: {setOptions: (options: Opt
 
                 <div className='card-footer'>
                   <p>{authState.user ? authState.user?.displayName : "user user"}</p>
-                  <button className='danger'>Sign out</button>
+                  <button className='danger' onClick={window.electronAPI.signOut}>Sign out</button>
                 </div>
             </div>
             

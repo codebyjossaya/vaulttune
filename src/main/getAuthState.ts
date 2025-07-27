@@ -10,7 +10,10 @@ export function getAuthState(): Promise<AuthState> {
             return;
         }
         console.log("Verifying existing VaultTune token...");
-        const api = server.options.api || 'https://api.jcamille.tech';
+        if (!server.options.api) {
+            server.notify("No API endpoint set. Using default", "warning");
+        }
+        const api = server.options.api || 'https://api.vaulttune.jcamille.dev';
         server.options.token = token;
         try {
             const response = await fetch(`${api}/vaulttune/auth/vault/verifyToken/`, {

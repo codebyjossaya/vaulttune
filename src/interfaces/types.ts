@@ -7,7 +7,7 @@ export enum SongStatus {
 export class ServerOptions {
     public network?: boolean;
     public name?: string | "Untitled Vault";
-    public token: string | null;
+    public token?: string | null;
     public api?: string;
 }
 

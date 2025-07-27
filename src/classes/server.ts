@@ -40,10 +40,15 @@ export default class Server {
     public state: "online" | "offline" | "error" = "offline";
     public users: User[] = [];
     public stoppers: Map<string, NodeJS.Timeout> = new Map();
-    public notify: (message: string, type: "success" | "error" | "warning") => void = () => {}
+    public notify?: (message: string, type: "success" | "error" | "warning") => void;
 
-    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: 'https://api.jcamille.tech', token: null}) {
+    constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: null, token: null}) {
         this.options = options;
+        if (!this.options.api) {
+            this.options.api = 'https://api.vaulttune.jcamille.dev'; //
+            if (this.notify) this.notify("No API endpoint set. Using default: https://api.vaulttune.jcamille.dev", "warning");
+            console.warn("No API endpoint set. Using default: https://api.vaulttune.jcamille.dev");
+        }
         this.app = express();
         this.app.use(cors({
             origin: '*', // NOTE: Use specific origins in production!
@@ -53,6 +58,7 @@ export default class Server {
         this.httpServer = createServer(this.app);
 
         this.io = new SocketServer(this.httpServer, {
+            transports: ['websocket', 'polling'],
             cors: {
                 origin: "*",
                 methods: ["GET", "POST","OPTIONS"],
@@ -341,7 +347,14 @@ export default class Server {
                     });
                 }
                 console.log("Closed server.");
-                resolve();
+                console.log("Saving server settings...");
+                this.export().then(() => {
+                    console.log("Server settings saved successfully.");
+                    resolve();
+                }).catch((err) => {
+                    console.error("Error saving server settings:", err);
+                });
+                
             } catch (err) {
                 console.error("Error stopping Vault:", err);
                 reject(err);
@@ -458,6 +471,7 @@ export default class Server {
         console.log(data);
         const server = new Server(data.options);
         server.user = data.user;
+        console.log("Loading rooms ...")
         server.rooms = await Promise.all(data.rooms.map(room => Room.fromJSON(room)));
         console.log("Server loaded successfully from JSON");
         return server;

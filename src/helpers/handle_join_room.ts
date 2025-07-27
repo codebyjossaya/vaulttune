@@ -15,6 +15,8 @@ export function handleJoinRoom(t: Server, socket: Socket, id: string) {
         ));
         console.log("Emitted all songs to device " + socket.id);
         socket.emit("playlists",room.playlists);
+        console.log("Emitted all playlists to device " + socket.id);
+        console.log(room.playlists)
     } else {
         console.error(`Room ${id} does not exist`)
         socket.emit("error", "Room not found");
