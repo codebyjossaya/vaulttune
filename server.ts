@@ -108,7 +108,14 @@ export class Server {
                         }
                     }
 
-                    res.json({status: "success",uid:user_token_data.uid});
+                    const user = await this.auth.getUser(user_token_data.uid);
+
+                    res.json({status: "success", user: {
+                        uid: user_token_data.uid,
+                        email: user_token_data.email,
+                        displayName: user.displayName,
+                        avatar: user.photoURL
+                    }});
                     console.log("Verification of client membership in Vault was successful!")
                     ;
                 } catch (error: any) {
