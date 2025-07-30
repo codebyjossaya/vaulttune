@@ -89,6 +89,9 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       }
       // Set the socket connection using the tunnel URL
       setSocket(io(data.vault.tunnel_url,{
+        auth: {
+          token: token, 
+        },
         extraHeaders: {
           "bypass-tunnel-reminder": "true",
         }
@@ -154,6 +157,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       setError("Invalid action specified for invite handling");
       return;
     }
+    setReceivedInvitesOverlay(false);
     setLoading(`Handling invite: ${action}ing...`);
     fetch(`https://api.vaulttune.jcamille.dev/vaulttune/user/vault/handleRequest`, {
       method: "POST",
@@ -236,9 +240,9 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       <SideOverlay isOpen={receivedInvitesOverlay} onClose={() => setReceivedInvitesOverlay(false)}>
         <h2>Pending Invites</h2>
         <div className='mini-player-card'>
-          <div className='player-card'>
+          <div className='list'>
             {receivedInvites.map((invite) => (
-            <div className='player-list-item' key={invite.owner.uid}>
+            <div className='list-item' key={invite.owner.uid}>
               <span>{invite.owner.displayName} invited you to join {invite.vault_name}</span>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
                 <button onClick={() => handleInvite(invite.vault_id, "accept")}>Accept</button>
