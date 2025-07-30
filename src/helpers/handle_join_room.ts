@@ -1,8 +1,8 @@
-import { Socket } from "socket.io";
 import Room from "../classes/room";
 import Server from "../classes/server";
+import { User } from "interfaces/types";
 
-export function handleJoinRoom(t: Server, socket: Socket, id: string) {
+export function handleJoinRoom(t: Server, socket: User, id: string) {
     console.log(`Device ${socket.id} is attempting to join room ${id}`)
     const room: Room | undefined = t.rooms.find(room => room.id === id);
     if (room) {

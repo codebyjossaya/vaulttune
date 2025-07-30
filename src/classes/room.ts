@@ -2,7 +2,7 @@ import { Socket } from "socket.io";
 import Song from "./song";
 import Playlist from "./playlist";
 import { readdirSync, writeFileSync } from "fs";
-import { SongStatus } from "../interfaces/types";
+import { SongStatus, User } from "../interfaces/types";
 import {watch} from 'chokidar'
 import { basename } from "path";
 import { SongError } from "../interfaces/errors";
@@ -10,7 +10,7 @@ import { SongError } from "../interfaces/errors";
 export default class Room {
     public id: string;
     public name: string;
-    public members: Socket[];
+    public members: User[];
     public songs: Song[] = [];
     public playlists: Playlist[] = [];
     public dirs: string[] = [];
@@ -27,13 +27,13 @@ export default class Room {
         const random = Math.floor(Math.random() * 1000000);
         this.id = (id === undefined) ? `room_${timestamp}_${random}` : id;
     }
-    addMember(socket: Socket): void {
-        socket.join(this.id);
-        this.members.push(socket);
+    addMember(user: User): void {
+        user.join(this.id);
+        this.members.push(user);
     }
-    removeMember(socket: Socket) {
-        socket.leave(this.id);
-        this.members = this.members.filter(member => member.id !== socket.id);
+    removeMember(user: User) {
+        console.log(`Removing member with id: ${user.id} from room ${this.name}`);
+        this.members = this.members.filter(member => member.id !== user.id);
     }
     getMembers() {
         return this.members;
@@ -75,15 +75,15 @@ export default class Room {
                 }
                 
                 
-                for (const socket of this.members) {
-                    socket.emit("songs", this.exportSongs())
+                for (const member of this.members) {
+                    member.emit("songs", this.exportSongs())
                 }
             }) 
             watcher.on('unlink', (path) => {
                 console.log(`${path} was removed`);
                 this.songs = this.songs.filter(song => song.path !== path);
-                for (const socket of this.members) {
-                    socket.emit("songs", this.exportSongs())
+                for (const member of this.members) {
+                    member.emit("songs", this.exportSongs())
                 }
                 
             }) 

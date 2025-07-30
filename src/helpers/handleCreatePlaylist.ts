@@ -3,6 +3,7 @@ import Room from "../classes/room";
 import Server from "../classes/server";
 import Song from "../classes/song";
 import Playlist from "../classes/playlist";
+import { User } from "../interfaces/types";
 
 
 export function handleCreatePlaylist(t: Server, socket: Socket, room_id: string, name: string, song_ids: string[]) {
@@ -12,7 +13,7 @@ export function handleCreatePlaylist(t: Server, socket: Socket, room_id: string,
         socket.emit("error","Room not found");
         return;
     }
-    const members: Socket[] = room!.getMembers();
+    const members: User[] = room!.getMembers();
         if (members.find(member => member.id === socket.id) === undefined) {
         socket.emit("error","User has not joined this room");
         return;

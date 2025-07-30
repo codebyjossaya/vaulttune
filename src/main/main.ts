@@ -13,6 +13,28 @@ import { User } from "../src/types/types";
 import { PendingRequest } from "../src/types/types";
 import { homedir } from 'os';
 
+const handleSquirrelEvent = () => {
+    const squirrelCommand = process.argv[1];
+    if (squirrelCommand === '--squirrel-install' || squirrelCommand === '--squirrel-updated') {
+        // Handle installation or update
+        spawnUp
+        return true;
+    } else if (squirrelCommand === '--squirrel-uninstall') {
+        keytar.deletePassword('vaulttune', 'token'); // Remove user credentials from keytar
+        return true;
+    } else if (squirrelCommand === '--squirrel-obsolete') {
+        // Handle obsolete version
+        return true;
+    }
+}
+
+if (handleSquirrelEvent()) {
+    app.quit();
+}
+
+
+
+
 let server: Server;
 
 

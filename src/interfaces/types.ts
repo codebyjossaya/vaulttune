@@ -1,4 +1,5 @@
 import { UserRecord } from "firebase-admin/auth"
+import { Socket } from "socket.io";
 export enum SongStatus {
     UPLOADED = 'UPLOADED',
     SYSTEM = 'SYSTEM',
@@ -41,4 +42,15 @@ export interface Room {
     id?: string;
     name: string;
     dirs: string[];
+}
+
+export interface User extends Socket {
+    data: {
+        firebase?: {
+            uid: string;
+            email: string;
+            displayName: string;
+            photoURL: string;
+        };
+    };
 }

@@ -68,9 +68,37 @@ export default class Server {
             maxHttpBufferSize: 1e8
         });
 
-        this.io.on('connection', (socket: Socket) => {
+        this.io.use((socket, next) => {
+            console.log(`Device ${socket.id} is attempting to connect...`);
+            if (this.notify) this.notify(`Device ${socket.id} is attempting to connect...`, "warning");
+            fetch(`${this.options.api}/vaulttune/auth/vault/verifyUser`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({  user_token: socket.handshake.auth.token, 
+                                        vault_token: this.options.token })
+            }).then(response => {
+                if (!response.ok) {
+                    console.error(`Failed to verify user for device ${socket.id}: ${response.statusText}`);
+                    socket.emit("error", "Failed to verify user");
+                    return next(new Error("Failed to verify user"));
+                }
+                return response.json();
+            }).then((data: { user: { uid: string, email: string, displayName: string, avatar: string } }) => {
+                console.log(`Device ${socket.id} verified successfully. User: ${data.user}`);
+                socket.data.firebase = data.user;
+                next();
+            }).catch(error => {
+                console.error(`Error verifying user for device ${socket.id}:`, error);
+                socket.emit("error", "Failed to verify user");
+                next(new Error("Failed to verify user"));
+            });
+        });
+
+        this.io.on('connection', (socket: User) => {
             console.log(`Device ${socket.id} has connected to the server`)
-            this.notify(`Device ${socket.id} has connected to the server`, "success");
+            this.notify(`${socket.data.firebase.displayName} has connected to the server (${socket.id})`, "success");
             socket.emit("status","Connection recieved");
             socket.on('get rooms', () => {
                 console.log(`Device ${socket.id} requested available rooms`);
@@ -87,20 +115,29 @@ export default class Server {
                 const room: Room | undefined = this.rooms.find((element) => element.id === room_id);
                 if (room === undefined) {
                     socket.emit("error","Room not found");
+                    console.error(`Room with ID ${room_id} not found for device ${socket.id}`);
                     return;
                 }
+                console.log(`Room found: ${room.name}`);
                 const members = room!.getMembers();
                 if (members.find(member => member.id === socket.id) === undefined) {
                     socket.emit("error","User has not joined this room");
+                    console.error(`Device ${socket.id} is not a member of room ${room_id}`);
                     return;
                 }
                 const song = room.songs.find((element: Song) => element.id === song_id);
                 if (song === undefined) {
                     socket.emit("error","This song does not exist");
+                    console.error(`Song with ID ${song_id} not found in room ${room_id} for device ${socket.id}`);
                 }
 
                 // add in compression
                 const buf = song!.getBuffer();
+                if (buf === null) {
+                    socket.emit("error", "This song is not available for playback");
+                    console.error(`Song with ID ${song_id} is not available for playback in room ${room_id} for device ${socket.id}`);
+                    return;
+                }
                 if (this.rpc) {
                     this.rpc.setActivity({
                         details: `Playing ${song.metadata.common.title}`,
@@ -120,22 +157,31 @@ export default class Server {
                 data.path = null;
 
                 console.log(`Sending song data start event for song ${song_id} to room ${room_id}`);
-                this.io.to(room_id).emit("song data start",data,total_chunks);
+                this.io.to(room_id).emit("song data start",
+                                        data,
+                                        total_chunks, 
+                                        {   name: socket.data.firebase?.displayName || "Unknown Device", 
+                                            id: socket.id
+                                        });
                 
             });
 
             socket.on('song data ready', (room_id: string, song_id: string) => {
                 console.log(`Device ${socket.id} is ready to receive song data for ${song_id}`);
                 const room: Room | undefined = this.rooms.find((element) => element.id === room_id);
+                
                 if (room === undefined) {
                     socket.emit("error","Room not found");
+                    console.error(`Room with ID ${room_id} not found for device ${socket.id}`);
                     return;
                 }
+                console.log(`Room found: ${room ? room.name : "not found"}`);
                 const song = room.songs.find((element: Song) => element.id === song_id);
                 if (song === undefined) {
                     socket.emit("error","This song does not exist");
                     return;
                 }
+                console.log(`Song found: ${song.metadata.common.title} by ${song.metadata.common.artist}`);
                 const buf = song.getBuffer();
                 let chunkSize = (buf.byteLength / song.metadata.format.duration) * 0.5;
                 const total_chunks = Math.ceil(buf.byteLength / chunkSize);
@@ -261,11 +307,9 @@ export default class Server {
         this.rooms.push(room);
     }
 
-    error() {
-        ipcMain.emit('server-error', 'An error occurred in the server');
-    }
 
-    async start() {
+
+    async start(retry: boolean = true) {
         this.options.token = await keytar.getPassword("vaulttune", "token");
         console.log("Starting Vault...");
         console.log("Generating a random port...");
@@ -281,15 +325,30 @@ export default class Server {
             }
         }
 
-        console.log("Obtaining tunnel address...");
+        
         if(this.options.network) {
+            console.log("Obtaining tunnel address...");
             this.address = await getTunnelAddr(this, port)
             if (this.tunnel) {
-                this.tunnel.on('error', (error: Error) => {
-                    console.error("Tunnel error:", error.message);
-                    this.notify(`Tunnel error: ${error.message}`, "error");
-                    this.state = "error";
-                    this.error();
+                this.tunnel.once('error', async (error: Error) => {
+                    if (error.message.includes("connection refused")) {
+                        try {
+                            this.tunnel = null;
+                            console.log("Tunnel connection refused. Retrying...");
+                            this.notify?.("Tunnel connection refused. Retrying...", "warning");
+                            
+                            retry ? setTimeout(async () => await this.start(false), 5000) : null; // Retry starting the server
+                            retry ? null : (() => {
+                                throw new Error("Tunnel connection refused after retrying");
+                            })();
+                        } catch (err) {
+                            console.error("Tunnel error:", error.message);
+                            this.notify(`Tunnel error: ${error.message}`, "error");
+                            this.state = "error";
+                            console.error("Error restarting tunnel:", err);
+                        }
+                    }
+                    
                 });
             }
             console.log("This Vault's address: ", this.address);
