@@ -47,7 +47,12 @@ const start = async () => {
     if (existsSync(serverSettingsPath)) {
         server = await Server.fromJSON(JSON.parse(readFileSync(`${homedir()}/VaultTune/settings/server.json`, 'utf-8')));
         console.log("Server settings loaded from file:", server.options);
-        server.register();
+        const token = await keytar.getPassword('vaulttune', 'token');
+        if (token !== null) {
+            server.options.token = token;
+            server.register();
+            console.log("Token found in keytar, setting server token.");
+        }
     }
     else {
         server = new Server();
@@ -223,7 +228,7 @@ const start = async () => {
                 })
             }).then(async (response) => {
                 if (!response.ok) {
-                    const data = await response.json();
+                    const data = await response.json() as { status: string; error: string; [key: string]: any };
                     console.error("Failed to invite user:", data);
                     throw new Error("Failed to invite user: " + data.error);
                 }

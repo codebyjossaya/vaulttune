@@ -16,9 +16,9 @@ export function registerVault(t: Server, status: "online" | "offline"): Promise<
                     tunnel_url: t.address || null,
                     status,
                 })
-            }).then(response => {
+            }).then(async response => {
                 if (!response.ok) {
-                    throw new Error(`Failed to register vault: ${response.statusText}`);
+                    throw new Error(`Failed to register vault: ${response.statusText}: ${await response.text()}`);
                 }
                 return response.json();
             }).then(data => {

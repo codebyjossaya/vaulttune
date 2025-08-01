@@ -1,6 +1,6 @@
 import Room from "../classes/room";
 import Server from "../classes/server";
-import { User } from "interfaces/types";
+import { User } from "../interfaces/types";
 
 export function handleJoinRoom(t: Server, socket: User, id: string) {
     console.log(`Device ${socket.id} is attempting to join room ${id}`)

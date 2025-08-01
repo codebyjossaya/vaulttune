@@ -8,7 +8,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -p ./tsconfig.electron.json && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "electron-forge start",

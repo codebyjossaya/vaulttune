@@ -305,7 +305,7 @@ export class Server {
                     const vaults: UserVaultData = snapshot.val();
                     
                     console.log(`User ${user_token_data.uid} has the following Vaults:`, vaults);
-                    console.log(`Adding status to vaults...`)
+                    console.log(`Updating Vaults...`)
                     // Add status to each vault
                     for (const vaultID of Object.keys(vaults)) {
                         if (vaultID === 'requests') continue; // Skip requests
@@ -314,7 +314,8 @@ export class Server {
                         const vaultSnapshot = await vaultRef.once('value');
                         if (vaultSnapshot.exists()) {
                             const vaultData = vaultSnapshot.val();
-                            vault.status = vaultData.status || "offline"; // Default to "offline" if status
+                            vault.status = vaultData.status || "offline"; // Default to "offline" if not set
+                            vault.vault_name = vaultData.vault_name || "Unnamed Vault"; // Default to "Unnamed Vault" if not set
                         }
                         else {
                             vault.status = "offline"; // If vault not found, set status to "offline"
