@@ -228,7 +228,7 @@ export class Server {
                             if (!usersList.includes(server_token.user.uid)) {
                                 usersList.push(server_token.user.uid);
                         }
-                        vaultRef.update({ tunnel_url, users: usersList });
+                        vaultRef.update({ tunnel_url, users: usersList, vault_name, status });
                     }
                     // Respond with success
                     res.json({status: "success",message: "Vault registered successfully"});
