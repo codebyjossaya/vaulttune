@@ -4,7 +4,12 @@ import { Options } from "../src/types/types";
 
 contextBridge.exposeInMainWorld('electronAPI', {
   ping: () => 'pong',
-  getAuthState: () => ipcRenderer.invoke('get-auth-state'),
+  getAuthState: () => {
+    return Promise.race([
+      ipcRenderer.invoke('get-auth-state'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout fetching auth state")), 5000))
+    ]);
+  },
   signIn: (api?: string) => ipcRenderer.invoke('sign-in', api),
   signOut: () => ipcRenderer.invoke('sign-out'),
   getUsers: () => ipcRenderer.invoke('get-users'),

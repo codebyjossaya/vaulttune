@@ -44,14 +44,19 @@ let server: Server;
 const start = async () => {
     const serverSettingsPath = path.join(app.getPath('home'), 'VaultTune', 'settings', 'server.json');
     console.log("Server settings path:", serverSettingsPath);
-    if (existsSync(serverSettingsPath)) {
+    const exists = existsSync(serverSettingsPath);
+    if (exists) {
         server = await Server.fromJSON(JSON.parse(readFileSync(`${homedir()}/VaultTune/settings/server.json`, 'utf-8')));
         console.log("Server settings loaded from file:", server.options);
         const token = await keytar.getPassword('vaulttune', 'token');
         if (token !== null) {
-            server.options.token = token;
-            server.register();
             console.log("Token found in keytar, setting server token.");
+            server.options.token = token;
+            server.register().catch(error => {
+                console.error("Error registering server:", error);
+                server.notify("Error registering server: " + error.message, "error");
+            });
+            
         }
     }
     else {
@@ -60,7 +65,7 @@ const start = async () => {
     }
     
     const win = new BrowserWindow({
-        width: 535,
+        width: exists ? 535 : 800,
         height: 894,
         minWidth: 535,
         minHeight: 894,
@@ -76,16 +81,29 @@ const start = async () => {
         win.webContents.send('notification', message, type);
     }
 
-    ipcMain.handle('get-auth-state', async () => {
-        try {
-            const authState = await getAuthState();
-            server.user = authState.user; // Store the auth state in the server instance
-            return authState;
-        } catch (error) {
-            win.webContents.send('notification', 'Error getting auth state: ' + error.message, 'error');
-            console.error("Error getting auth state:", error);
-            return { authenticated: false };
-        }
+    ipcMain.handle('get-auth-state', () => {
+        return new Promise((resolve, reject) => {
+            try {
+                getAuthState().then(authState => {
+                    if (!authState.authenticated) {
+                        win.webContents.send('notification', 'You are not authenticated. Please sign in.', 'error');
+                        resolve({ authenticated: false });
+                    }
+                    server.user = authState.user;
+                    resolve(authState);
+                    win.webContents.send('notification', 'Authenticated successfully', 'success');
+                }).catch(error => {
+                    win.webContents.send('notification', 'Error getting auth state: ' + error.message, 'error');
+                    console.error("Error getting auth state:", error);
+                    resolve({ authenticated: false });
+                });
+            } catch (error) {
+                win.webContents.send('notification', 'Error getting auth state: ' + error.message, 'error');
+                console.error("Error getting auth state:", error);
+                reject();
+            }
+        });
+        
     });
     ipcMain.handle('server-status', () => {
         return server.state;

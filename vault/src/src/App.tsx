@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { Auth } from './components/Auth';
 import './App.css';
 import { Manager } from './components/Manager';
-import type { Options } from './types/types';
+import { type Options } from './types/types';
+import { NotificationContext } from './components/NotificationContext';
+import { AuthContext } from './components/AuthContext';
 import { Loading } from './components/Loading';
 import { InitialSetup } from './components/InitialSetup';
 import type { AuthState } from './types/types';
+import Notification from './components/Notification';
 
 function signIn(setAuthState: React.Dispatch<React.SetStateAction<AuthState>>, api: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -18,16 +21,8 @@ function signIn(setAuthState: React.Dispatch<React.SetStateAction<AuthState>>, a
   });
 }
 
-function signOut(setAuthState: React.Dispatch<React.SetStateAction<AuthState>>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    window.electronAPI?.signOut().then(() => {
-      setAuthState({ authenticated: false });
-      resolve();
-    }).catch(reject);
-  });
-}
 
-function PassAuthState({ authState, setAuthState }: { authState: AuthState, setAuthState: React.Dispatch<React.SetStateAction<AuthState>> }) {
+function PassAuthState({ authState }: { authState: AuthState }) {
   const [settings, setSettings] = useState<Options | null | undefined>(null);
 
   useEffect(() => {
@@ -59,7 +54,7 @@ function PassAuthState({ authState, setAuthState }: { authState: AuthState, setA
   };
 
   return settings !== null && settings !== undefined ? ( 
-    <Manager authState={authState} settings={settings} setSettings={updateSettings} signOut={() => signOut(setAuthState)} /> 
+    <Manager settings={settings} setSettings={updateSettings} /> 
   ) : ( 
     settings === undefined ? 
       <InitialSetup setOptions={updateSettings} authState={authState}/> : 
@@ -68,9 +63,17 @@ function PassAuthState({ authState, setAuthState }: { authState: AuthState, setA
 }
 
 function App() {
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning'; } | null>(null);
   const [authState, setAuthState] = useState<AuthState>({ authenticated: false });
   const [loading, setLoading] = useState<boolean>(true);
   
+  useEffect(() => {
+        console.log("Manager component mounted");
+        window.electronAPI.setNotificationCallback((message, type) => {
+            console.log("Notification received:", message, type);
+            setNotification({ message, type });
+        });
+    }, []);
   useEffect(() => {
     console.log(window.electronAPI?.ping());
     console.log("Checking authentication state...");
@@ -80,10 +83,27 @@ function App() {
       setLoading(false);
     }).catch((error) => {
       console.error("Error fetching auth state:", error);
+      setLoading(false);
+      console.log("Loading set to false");
       setAuthState({ authenticated: false });
     });
   }, []);
 
-  return authState.authenticated ? ( <PassAuthState authState={authState} setAuthState={setAuthState} />) : loading ? ( <Loading text="Loading authentication state..." /> ) : ( <Auth signIn={(api) => signIn(setAuthState, api)} title='Sign in to your Vault' /> );
+  
+
+  return (
+    <NotificationContext.Provider value={setNotification}>
+      {notification ? <Notification message={notification.message} type={notification.type} dismiss={() => setNotification(null)} /> : null}
+      <AuthContext.Provider value={{ authState, setAuthState }}>
+        {authState.authenticated ? (
+          <PassAuthState authState={authState} />
+        ) : loading ? (
+          <Loading text="Loading authentication state..." />
+        ) : (
+          <Auth signIn={(api) => signIn(setAuthState, api)} title='Sign in to your Vault' />
+        )}
+      </AuthContext.Provider>
+    </NotificationContext.Provider>
+  );
 }
 export default App;

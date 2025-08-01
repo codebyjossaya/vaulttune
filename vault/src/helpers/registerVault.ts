@@ -18,6 +18,7 @@ export function registerVault(t: Server, status: "online" | "offline"): Promise<
                 })
             }).then(async response => {
                 if (!response.ok) {
+                    if (response.status === 502) throw new Error("Bad Gateway: The server is currently unavailable. Please try again later.");
                     throw new Error(`Failed to register vault: ${response.statusText}: ${await response.text()}`);
                 }
                 return response.json();

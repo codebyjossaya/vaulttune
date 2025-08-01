@@ -10,4 +10,12 @@ export interface AuthState {
     api?: string;
 
 }
+
+export type NotificationSetter = React.Dispatch<React.SetStateAction<{
+  message: string;
+  type: 'success' | 'error' | 'warning';
+} | null>>;
+
+export type AuthStateSetter = React.Dispatch<React.SetStateAction<AuthState>>;
+
 export type { Options, User, PendingRequest, Room };

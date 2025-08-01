@@ -507,8 +507,12 @@ export default class Server {
     }
 
     async register(status: "online" | "offline" = "offline") {
-        await registerVault(this, status);
-        console.log("Vault registered successfully with VaultTune servers.");
+        try {
+            return await registerVault(this, status);
+        } catch (error) {
+            console.error("Error registering vault:", error);
+            throw error;
+        }
     }
     async export() {
         const options = this.options;

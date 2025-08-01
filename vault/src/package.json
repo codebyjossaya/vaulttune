@@ -3,7 +3,7 @@
   "description": "VaultTune is a self-hosted music server that allows you to stream your music library to any device over the web.",
   "author": "Jossaya Camille",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.1",
   "main": "dist-electron/main/main.js",
   "type": "commonjs",
   "scripts": {

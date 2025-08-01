@@ -314,6 +314,7 @@ export class Server {
                         const vaultSnapshot = await vaultRef.once('value');
                         if (vaultSnapshot.exists()) {
                             const vaultData = vaultSnapshot.val();
+                            console.log(vaultData)
                             vault.status = vaultData.status || "offline"; // Default to "offline" if not set
                             vault.vault_name = vaultData.vault_name || "Unnamed Vault"; // Default to "Unnamed Vault" if not set
                         }

@@ -1,10 +1,12 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useContext } from 'react';
 import { Loading } from './Loading';
 import { Header } from './Header';
-import type { Options, Room, AuthState, User, PendingRequest } from '../types/types';
+import type { Options, Room, AuthState, User, PendingRequest, NotificationSetter } from '../types/types';
 import { SideOverlay } from './SideOverlay';
-import Notification from './Notification';
-export function Manager({settings, setSettings, authState, signOut}: {settings: Options, setSettings: (settings: Options) => void, authState: AuthState, signOut: () => void}) {
+import { NotificationContext } from './NotificationContext';
+import { AuthContext } from './AuthContext';
+
+export function Manager({settings, setSettings}: {settings: Options, setSettings: (settings: Options) => void}) {
     
     const [selector, setSelector] = useState<"GENERAL" | "ROOMS" | "USERS">("GENERAL");
     const [vaultStatus, setVaultStatus] = useState<"online" | "offline" | "error">("offline");
@@ -19,7 +21,9 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const [signOutOverlay, setSignOutOverlay] = useState<boolean>(false);
     const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: window.innerWidth, height: window.innerHeight });
     const [divSize, setDivSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning'; } | null>(null);
+    const setNotification = useContext(NotificationContext) as NotificationSetter;
+    const {authState, setAuthState} = useContext(AuthContext) as { authState: AuthState; setAuthState: React.Dispatch<React.SetStateAction<AuthState>> };
+
     const [loadingOverlay, setLoadingOverlay] = useState<string | false>(false);
     const [usersOverlay, setUsersOverlay] = useState<boolean>(false);
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
@@ -30,13 +34,7 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     const playerCardRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        console.log("Manager component mounted");
-        window.electronAPI.setNotificationCallback((message, type) => {
-            console.log("Notification received:", message, type);
-            setNotification({ message, type });
-        });
-    }, []);
+    
     function changeSettings() {
         console.log("Changing settings...");
         if (!settings) {
@@ -79,6 +77,16 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
             setNotification({ message: "Failed to fetch pending requests", type: 'error' });
         });
     }
+
+    function signOut(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            window.electronAPI?.signOut().then(() => {
+            setAuthState({ authenticated: false });
+            resolve();
+            }).catch(reject);
+        });
+    }
+
     
 
     useEffect(() => {
@@ -465,7 +473,6 @@ export function Manager({settings, setSettings, authState, signOut}: {settings: 
     return loading ? (<Loading text={loading} />) : (
         <>
         { usersOverlay ? usersOverlayElement : null }
-        {notification ? <Notification message={notification.message} type={notification.type} dismiss={() => setNotification(null)} /> : null}
         {signOutOverlay ? signOutOverlayElement : null}
         {error ? errorOverlayElement : null}
         {roomOverlay !== undefined ? roomOverlayElement : null}

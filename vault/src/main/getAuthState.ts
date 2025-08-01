@@ -1,6 +1,19 @@
 import keytar from 'keytar'
 import { AuthState } from "../src/types/types";
 import { server } from './main';
+
+
+function verifyToken(token: string, api: string): Promise<Response> {
+    return fetch(`${api}/vaulttune/auth/vault/verifyToken/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    vault_token: token
+                })
+    });
+}
 export function getAuthState(): Promise<AuthState> {
     return new Promise( async (resolve, reject) => {
         const token = await keytar.findPassword('vaulttune');
@@ -16,15 +29,7 @@ export function getAuthState(): Promise<AuthState> {
         const api = server.options.api || 'https://api.vaulttune.jcamille.dev';
         server.options.token = token;
         try {
-            const response = await fetch(`${api}/vaulttune/auth/vault/verifyToken/`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    vault_token: token
-                })
-            });
+            const response = await Promise.race([verifyToken(token, api), new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("Token verification timed out")), 5000))]);
             if (!response.ok) {
                 const data: { error?: string } = await response.json();
                 if (data.error === "Error: Vault token is required") {
