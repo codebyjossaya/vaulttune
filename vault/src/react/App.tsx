@@ -42,15 +42,7 @@ function PassAuthState({ authState }: { authState: AuthState }) {
   const updateSettings = (newSettings: Options) => {
     console.log({ ...newSettings});
     setSettings({ ...newSettings});
-    window.electronAPI?.setServerSettings({...newSettings}).then((success) => {
-      if (success) {
-        console.log("Server settings updated successfully.");
-      } else {
-        console.error("Failed to update server settings.");
-      }
-    }).catch((error) => {
-      console.error("Error updating server settings:", error);
-    });
+    return window.electronAPI?.setServerSettings({...newSettings});
   };
 
   return settings !== null && settings !== undefined ? ( 

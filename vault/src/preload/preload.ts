@@ -1,6 +1,6 @@
 import { contextBridge } from 'electron';
 import { ipcRenderer } from 'electron';
-import { Options } from "../src/types/types";
+import { Options } from "../react/types/types";
 
 contextBridge.exposeInMainWorld('electronAPI', {
   ping: () => 'pong',

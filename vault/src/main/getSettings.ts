@@ -1,5 +1,5 @@
 import { homedir } from "os";
-import { Options } from "../src/types/types";
+import { Options } from "../react/types/types";
 import { server } from "./main";
 import { existsSync } from "fs";
 export function getSettings(): Promise<Options> {

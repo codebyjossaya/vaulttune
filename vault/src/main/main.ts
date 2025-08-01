@@ -9,8 +9,8 @@ import { getSettings } from './getSettings';
 import { promptHandler } from './promptHandler';
 import { existsSync, readFileSync } from 'fs';
 import keytar from 'keytar'
-import { User } from "../src/types/types";
-import { PendingRequest } from "../src/types/types";
+import { User } from "../react/types/types";
+import { PendingRequest } from "../react/types/types";
 import { homedir } from 'os';
 
 const handleSquirrelEvent = () => {

@@ -6,7 +6,7 @@ import { SideOverlay } from './SideOverlay';
 import { NotificationContext } from './NotificationContext';
 import { AuthContext } from './AuthContext';
 
-export function Manager({settings, setSettings}: {settings: Options, setSettings: (settings: Options) => void}) {
+export function Manager({settings, setSettings}: {settings: Options, setSettings: (settings: Options) => Promise<boolean>}) {
     
     const [selector, setSelector] = useState<"GENERAL" | "ROOMS" | "USERS">("GENERAL");
     const [vaultStatus, setVaultStatus] = useState<"online" | "offline" | "error">("offline");
@@ -49,7 +49,17 @@ export function Manager({settings, setSettings}: {settings: Options, setSettings
             }
         }
         console.log("Updated settings:", settings);
-        setSettings(settings);
+        setLoading("Saving settings...");
+        setSettings(settings).then(() => {
+            setLoading(null);
+            setNotification({ message: "Settings saved successfully", type: 'success' });
+            console.log("Settings saved successfully");
+        }).catch((error) => {
+            console.error("Error saving settings:", error);
+            setLoading(null);
+            setNotification({ message: "Failed to save settings", type: 'error' });
+        });
+
     }
 
     function getUsers() {

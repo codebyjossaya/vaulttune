@@ -1,5 +1,5 @@
 import keytar from 'keytar'
-import { AuthState } from "../src/types/types";
+import { AuthState } from "../react/types/types";
 import { server } from './main';
 
 
