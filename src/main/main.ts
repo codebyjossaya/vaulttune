@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
-// import { spawn } from 'child_process';
+import { spawn } from 'child_process';
 import { ipcMain } from 'electron';
 import { getAuthState } from './getAuthState';
 import Server from '../classes/server';
@@ -17,7 +17,10 @@ const handleSquirrelEvent = () => {
     const squirrelCommand = process.argv[1];
     if (squirrelCommand === '--squirrel-install' || squirrelCommand === '--squirrel-updated') {
         // Handle installation or update
-        spawnUp
+        const appFolder = path.resolve(process.execPath, '..');
+        const rootAtomFolder = path.resolve(appFolder, '..');
+        const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
+        spawn(updateDotExe, ['--createShortcut', path.basename(process.execPath)]);
         return true;
     } else if (squirrelCommand === '--squirrel-uninstall') {
         keytar.deletePassword('vaulttune', 'token'); // Remove user credentials from keytar
