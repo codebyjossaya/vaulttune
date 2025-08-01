@@ -22,8 +22,12 @@ export function Auth({ title, signIn }: AuthProps) {
     )
     return (
         <div className='card-container'>
+            <div className="portal-entry">
+                
+            </div>
             {error ? visible : null}
             <div className="card">
+                
                 <h1>VaultTune</h1>
                 <h2>{title || "Sign in"}</h2>
                 {loading ? (<Loading text={"Waiting for sign in to complete..."}/>) : (
@@ -35,8 +39,15 @@ export function Auth({ title, signIn }: AuthProps) {
                                 setError(error instanceof Error ? error.message : "An unknown error occurred");
                             }).finally(() => setLoading(false));
                         }} />
+                        <button onClick={() => window.location.href = "https://jcamille.dev"} style={{display: "flex", alignItems: "center", marginLeft: "auto", marginRight: "auto"}}>
+                            <svg viewBox="0 0 24 24" className="portal-icon" fill="none" stroke="currentColor">
+                                <path d="M15 18l-6-6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            <span>Back to jcamille.dev</span>
+                        </button>
                     </>
                 )}
+                
             </div>
             
         </div>

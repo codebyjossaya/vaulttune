@@ -41,7 +41,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
   const [playlistName, setPlaylistName] = useState<string>("");
   const [initiator, setInitiator] = useState<{ name: string, id: string} | null>(null);
   const [playQueue, setPlayQueue] = useState<Song[]>([]);
-  window.playQueue = playQueue; // for debugging purposes
+
   const audioRef = useRef<HTMLAudioElement>(null)
   const playingRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HTMLDivElement>(null)
@@ -475,7 +475,9 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
                 socket.on(`song seeked`, (id: string, time: number) => {
                     if (audioRef.current && id !== socket.id) {
+                        audioRef.current.removeEventListener('seeked', seeked); // remove the event listener to prevent multiple seeks
                         audioRef.current.currentTime = time;
+                        audioRef.current.addEventListener('seeked', seeked); // re-add the event listener
                         console.log(`Received seek event to ${time} seconds`);
                         seekedRef.current = true; // prevent multiple seeks
                         setTimeout(() => {
@@ -485,7 +487,9 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 });
                 socket.on(`song paused`, (id: string) => {
                     if (audioRef.current && id !== socket.id) {
+                        audioRef.current.removeEventListener('pause', paused); // remove the event listener to prevent multiple pauses
                         audioRef.current.pause();
+                        audioRef.current.addEventListener('pause', paused); // re-add the event listener
                         console.log("Song paused by another user");
                         pausedRef.current = true; // prevent multiple pauses
                         setTimeout(() => {
@@ -495,7 +499,9 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 });
                 socket.on(`song played`, (id: string) => {
                     if (audioRef.current && id !== socket.id) {
+                        audioRef.current.removeEventListener('play', played); // remove the event listener to prevent multiple plays
                         audioRef.current.play();
+                        audioRef.current.addEventListener('play', played); // re-add the event listener
                         console.log("Song played by another user");
                         playedRef.current = true; // prevent multiple plays
                         setTimeout(() => {
@@ -751,10 +757,11 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             <div className='currently-playing' ref={playingRef}>
                 {currentlyPlaying ? (
                     <>
-                    <div className='top-group'>
                         { initiator && initiator.id !== socket.id ? (
                             <p className='initiator'>{initiator.name} is playing</p>
                         ) : null}
+                    <div className='top-group'>
+                        
                         {currentlyPlaying.metadata.common.picture ? (
                                 <img 
                                     className="album-cover" 
