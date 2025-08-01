@@ -50,7 +50,9 @@ export function Manager({settings, setSettings}: {settings: Options, setSettings
         }
         console.log("Updated settings:", settings);
         setLoading("Saving settings...");
-        setSettings(settings).then(() => {
+        const promise = setSettings(settings);
+        console.log("Settings update promise:", promise);
+        promise.then(() => {
             setLoading(null);
             setNotification({ message: "Settings saved successfully", type: 'success' });
             console.log("Settings saved successfully");
