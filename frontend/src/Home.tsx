@@ -93,8 +93,9 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
           token: token, 
         },
         extraHeaders: {
-          "bypass-tunnel-reminder": "true",
-        }
+            "bypass-tunnel-reminder": "true", 
+            "X-Pinggy-No-Screen": "true",
+        },
       }));
       setLoading("Connecting to vault...");
       setCurrentVault(data.vault);
@@ -204,6 +205,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       });
       socket.on('connect', () => {
         console.log("connected")
+        socket.emit('get rooms')
         setConnected(true)
       })
       socket.on('error',(error) => {
@@ -261,7 +263,19 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
     {sideOverlay ? sideOverlay : null}
     {receivedInvitesOverlay ? receivedInvitesOverlayElement : null}
 
-
+    <div style={{
+      position: 'fixed',
+      bottom: 10,
+      left: 0,
+      width: '100%',
+      textAlign: 'center',
+      color: '#888',
+      fontSize: '0.9em',
+      pointerEvents: 'none',
+      zIndex: 1000
+    }}>
+      current version v1.3.0
+    </div>
     {error ?  (
                 <Overlay>
                     <h1>There was an error</h1>

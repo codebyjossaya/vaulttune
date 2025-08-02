@@ -1,24 +1,26 @@
 import { spawn } from "child_process";
 import localtunnel from "localtunnel";
 import Server from "../classes/server"
-
+import nodessh from "node-ssh"
+import ssh2 from "ssh2"
+import { Tunnel } from "cloudflared";
 export function getTunnelAddr(t: Server, port: number): Promise<string> {
     return new Promise(async (resolve, reject) => {
         try {
-            localtunnel({ port }).then((tunnel) => {
-                console.log("Tunnel created successfully");
-                t.tunnel = tunnel;
-                t.address = t.tunnel.url;
-                resolve(tunnel.url);
-            }).catch((error) => {
-                if (error.message.includes("connection refused")) {
-                    console.error("Error creating tunnel, retrying in 5 seconds...");
-                    setTimeout(() => {
-                        getTunnelAddr(t, port).then(resolve).catch(reject);
-                        return;
-                    }, 5000); // Retry after 5 seconds
-                } else throw error;
-                
+            t.tunnel = Tunnel.quick("http://localhost:" + port);
+            t.tunnel.on("error", (error: any) => {
+                console.error("Tunnel error:", error);
+            });
+            t.tunnel.on("exit", () => {
+                console.log("Tunnel exited");
+                console.log("Attempting to reconnect...");
+                t.tunnel = null;
+                t.start(true);
+            });
+            t.tunnel.on("url", (url: string) => {
+                console.log("Tunnel URL:", url);
+                resolve(url);
+                t.address = url;
             });
         } catch (error) {
             console.error("There was an error creating a tunnel: ", error);

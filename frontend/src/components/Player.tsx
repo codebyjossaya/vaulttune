@@ -11,129 +11,156 @@ import { SideOverlay } from './SideOverlay';
 
 // Extend Window interface to include socket property
 
-enum UploadStates {
-    UPLOADING = "UPLOADING",
-    SUCCESS = "SUCCESS",
-    FAILED = "FAILED",
-    NO_UPLOAD = "NO_UPLOAD"
-}
+    enum UploadStates {
+        UPLOADING = "UPLOADING",
+        SUCCESS = "SUCCESS",
+        FAILED = "FAILED",
+        NO_UPLOAD = "NO_UPLOAD"
+    }
 
 const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
-  const [room, joinRoom] = useState< Room | null>(null);
-  const [rooms, setRooms] = useState<Room[] >([])
-  const [songs, setSongs] = useState<Song[] | null>(null)
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [uploadDialog, enableUploadDialog] = useState<boolean>(false);
-  const [uploadState, setUploadState] = useState<UploadStates>(UploadStates.NO_UPLOAD);
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<Song | null>(null)
-  const [fileSelected, setFileSelected] = useState<boolean>(false)
-  const [error, setError] = useState<undefined | string>(undefined)
-  const [playing, setPlayState] = useState<boolean>(false);
-  const [selector, setSelector] = useState<"SONGS" | "PLAYLISTS">("SONGS")
-  const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
-  const [playlistView, setPlaylistView] = useState<Playlist | null>(null);
-  const [nextUp, setNextUp] = useState<Song | null>(null);
-  const [iosDialog, setIosDialog] = useState<boolean>(isOniOS(window));
-  const [createPlaylistView, setCreatePlaylistView] = useState<boolean>(false);
-  const [loadingDialog, setLoadingDialog] = useState<string | null>(null);
-  const [selectedSongs, setSelectedSongs] = useState<Song[]>([]);
-  const [playlistName, setPlaylistName] = useState<string>("");
-  const [initiator, setInitiator] = useState<{ name: string, id: string} | null>(null);
-  const [playQueue, setPlayQueue] = useState<Song[]>([]);
+    const [room, joinRoom] = useState< Room | null>(null);
+    const [rooms, setRooms] = useState<Room[] >([])
+    const [songs, setSongs] = useState<Song[] | null>(null)
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [uploadDialog, enableUploadDialog] = useState<boolean>(false);
+    const [uploadState, setUploadState] = useState<UploadStates>(UploadStates.NO_UPLOAD);
+    const [currentlyPlaying, setCurrentlyPlaying] = useState<Song | null>(null)
+    const [fileSelected, setFileSelected] = useState<boolean>(false)
+    const [error, setError] = useState<undefined | string>(undefined)
+    const [playing, setPlayState] = useState<boolean>(false);
+    const [selector, setSelector] = useState<"SONGS" | "PLAYLISTS">("SONGS")
+    const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
+    const [playlistView, setPlaylistView] = useState<Playlist | null>(null);
+    const [nextUp, setNextUp] = useState<Song | null>(null);
+    const [iosDialog, setIosDialog] = useState<boolean>(isOniOS(window));
+    const [createPlaylistView, setCreatePlaylistView] = useState<boolean>(false);
+    const [loadingDialog, setLoadingDialog] = useState<string | null>(null);
+    const [selectedSongs, setSelectedSongs] = useState<Song[]>([]);
+    const [playlistName, setPlaylistName] = useState<string>("");
+    const [initiator, setInitiator] = useState<{ name: string, id: string} | null>(null);
+    const [pendingSong, setPendingSong] = useState<Song | null>(null);
+    const [nonPendingSong, setNonPendingSong] = useState<Song | null>(null);
 
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const playingRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null)
-  const bufferRef = useRef<SourceBuffer | null>(null);
-  const queueRef = useRef<SongChunk[]>([]);
-  const sourceRef = useRef<MediaSource | null>(null);
-  const chunkCounterRef = useRef<number>(0);
-  const endOfSongRef = useRef<boolean>(true);
-  const currentlyPlayingRef = useRef<Song | null>(currentlyPlaying);
-  const currentPlaylistRef = useRef<Playlist | null>(currentPlaylist);
-  const roomsRef = useRef<Room[]>(rooms);
-  const seekedRef = useRef<boolean>(false);
-  const pausedRef = useRef<boolean>(false);
-  const playedRef = useRef<boolean>(false);
+    const audioRef = useRef<HTMLAudioElement>(null)
+    const playingRef = useRef<HTMLDivElement>(null);
+    const playerRef = useRef<HTMLDivElement>(null)
+    const inputRef = useRef<HTMLInputElement>(null);
+    const headerRef = useRef<HTMLDivElement>(null)
+    const bufferRef = useRef<SourceBuffer | null>(null);
+    const queueRef = useRef<SongChunk[]>([]);
+    const sourceRef = useRef<MediaSource | null>(null);
+    const chunkCounterRef = useRef<number>(0);
+    const endOfSongRef = useRef<boolean>(true);
+    const currentlyPlayingRef = useRef<Song | null>(currentlyPlaying);
+    const currentPlaylistRef = useRef<Playlist | null>(currentPlaylist);
+    const roomsRef = useRef<Room[]>(rooms);
+    const seekedRef = useRef<boolean>(false);
+    const pausedRef = useRef<boolean>(false);
+    const playedRef = useRef<boolean>(false);
+    const nonPendingSongRef = useRef<Song | null>(null);
 
-  const socket = config.socket!;
+    useEffect(() => {
+        nonPendingSongRef.current = nonPendingSong;
+    }, [nonPendingSong]);
 
 
-  const user = config.user!;
-  const signOut = config.signOut;
+    const socket = config.socket!;
 
-  function checkSourceBufferDuration(expectedDuration: number) {
-    if (bufferRef.current) {
-        const EPSILON = 0.0005; // 50 milliseconds
+    useEffect(() => {
+        console.log(`[STRICT MODE CHECK] useEffect running at ${Date.now()}`);
+        console.log(`[STRICT MODE CHECK] Current listeners before:`, socket.listeners('song data start').length);
+        
+        const listener = (song: Song, total_chunks: number, initiator: { name: string, id: string}) => {
+            console.log(`[EVENT] Song data start received - listener instance:`, listener.toString().slice(0, 50));
+            songDataListener(song, total_chunks, initiator, room!);
+        }
+        
+        // Add a unique identifier to the listener for debugging
+        (listener as any).__debugId = Math.random().toString(36).substr(2, 9);
+        console.log(`[STRICT MODE CHECK] Registering listener with ID:`, (listener as any).__debugId);
+        
+        socket.on('song data start', listener);
+        console.log(`[STRICT MODE CHECK] Current listeners after:`, socket.listeners('song data start').length);
+        
+        return () => {
+            console.log(`[STRICT MODE CHECK] Cleanup running for listener:`, (listener as any).__debugId);
+            socket.removeListener('song data start', listener);
+            console.log(`[STRICT MODE CHECK] Current listeners after cleanup:`, socket.listeners('song data start').length);
+        };
+}, [room]);
 
+
+    const user = config.user!;
+    const signOut = config.signOut;
+
+    function checkSourceBufferDuration(expectedDuration: number) {
+        if (bufferRef.current) {
+            const EPSILON = 0.0005; // 50 milliseconds
+
+            const buffer = bufferRef.current;
+            const currentDuration = buffer.buffered.length > 0 ? buffer.buffered.end(buffer.buffered.length - 1) : 0;
+            console.log(`Current SourceBuffer duration: ${currentDuration + EPSILON}, expected: ${expectedDuration}`);
+            return currentDuration + EPSILON >= expectedDuration;
+        }
+        return false;
+    }
+    async function appendBuffer(obj: SongChunk) {
+
+        const chunkCounter = chunkCounterRef.current;
         const buffer = bufferRef.current;
-        const currentDuration = buffer.buffered.length > 0 ? buffer.buffered.end(buffer.buffered.length - 1) : 0;
-        console.log(`Current SourceBuffer duration: ${currentDuration + EPSILON}, expected: ${expectedDuration}`);
-        return currentDuration + EPSILON >= expectedDuration;
-    }
-    return false;
-  }
-  async function appendBuffer(obj: SongChunk) {
-    
-    const chunkCounter = chunkCounterRef.current;
-    const buffer = bufferRef.current;
-    buffer?.appendBuffer(obj.buffer);
-    if (obj.chunk_counter + 1 === chunkCounter) {
-        const source = sourceRef.current!
-        console.log("Ending stream")
-        buffer!.addEventListener('updateend', () => {
-            if (checkSourceBufferDuration(source.duration)) {
-                
-                try {
-                    source!.endOfStream();
-                } catch (error) {
-                    setError(`Error ending stream: ${error}`);
+        buffer?.appendBuffer(obj.buffer);
+        if (obj.chunk_counter + 1 === chunkCounter) {
+            const source = sourceRef.current!
+            console.log("Ending stream")
+            buffer!.addEventListener('updateend', () => {
+                if (checkSourceBufferDuration(source.duration)) {
+                    try {
+                        source!.endOfStream();
+                    } catch (error) {
+                        setError(`Error ending stream: ${error}`);
+                    }
+                } else {
+                    console.log("Not the last buffer...waiting")
                 }
-            } else {
-                console.log("Not the last buffer...waiting")
-            }
-        });
-        
-        
-        
-        
+            });
+        }
     }
-  }
 
-    function songDataListener(song: Song, total_chunks: number, initiator: { name: string, id: string}, room: Room) {
+    async function songDataListener(song: Song, total_chunks: number, initiator: { name: string, id: string}, room: Room) {
         // record the total number of chunks
         console.log(`Total chunks: ${total_chunks}`)
-        chunkCounterRef.current = total_chunks;
-        // ending a song that is currently loading (waiting for data)
-        if (currentlyPlaying) {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.currentTime = 0;
-            }
-            console.log("Song data end received, clearing currently playing song");
-            setCurrentlyPlaying(null); // clear currently playing song
-        }
-        // process currently playing song
-        // add multiple artists if needed
-        if(song.metadata.common.artists.length > 1) {
-            song.artist_str = ""
-            const artists: [] = song.metadata.common.artists;
+        if (song.metadata.common.artists.length > 1) {
+            song.artist_str = "";
+            const artists: string[] = song.metadata.common.artists;
             artists.forEach((artist, index) => {
-                console.log(index)
-                if(index == artists.length - 1) song.artist_str += `, and ${artist}`;
+                if (index == artists.length - 1) song.artist_str += `, and ${artist}`;
                 else {
-                    if(artist != "") song.artist_str += artist + ", "
+                if (artist != "") song.artist_str += artist + ", ";
                 }
-            })
-        } else {
+            });
+            } else {
             song.artist_str = song.metadata.common.artist;
+        }
+        if (currentlyPlaying && pendingSong && currentlyPlaying.id === pendingSong.id && song.id !== currentlyPlaying.id) {
+            console.log("Removing currently playing song because a new song is being played");
+            socket.removeListener(`song data ${currentlyPlaying.id}`, songChunkListener); // remove any previous listeners for this song
         }
         setCurrentlyPlaying(song);
         setInitiator(initiator)
-        // ensure songLoadedRef is set to false
+        chunkCounterRef.current = total_chunks;
+        // ending a song that is currently loading (waiting for data)
+
+        // Wait for the new audioRef to be available before proceeding
+        const waitForAudioRef = async () => {
+            let retries = 0;
+            while (!audioRef.current && retries < 20) {
+                await new Promise(res => setTimeout(res, 50));
+                console.log("Waiting for audioRef to be available...");
+                retries++;
+            }
+        };
         
         // Adding song info to MediaSession
         if ('mediaSession' in navigator) {
@@ -167,172 +194,171 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         }
 
         // prepare the audio element for playback
-        if (audioRef.current) {
-            sourceRef.current = new MediaSource();
-            const source = sourceRef.current;
-            audioRef.current.src = URL.createObjectURL(source);
+        if (!audioRef.current) {
+            await waitForAudioRef();
+        }
+        sourceRef.current = new MediaSource();
+        const source = sourceRef.current;
+        audioRef.current!.src = URL.createObjectURL(source);
+        
+
+        // need to investigate first time playing issue HERE.
+        source.addEventListener('sourceopen', () => {
+            console.log("Source opened, setting up source buffer");-
+            console.log("Source opened, creating source buffer");
+            source!.duration = song.metadata.format.duration;
+            const buf = source!.addSourceBuffer(getMimeType(song));
+            bufferRef.current = buf;
+            console.log("Source buffer created",buf);
+
+            const queue: SongChunk[] = queueRef.current;
+            const buffer = bufferRef.current;
+            // clear the queue
+            queue.length = 0;
+            console.log("Queue cleared", queue);
+            console.log("Preparing listeners for song data");
             
 
-            // need to investigate first time playing issue HERE.
-            source.addEventListener('sourceopen', () => {
-                console.log("Source opened, setting up source buffer");-
-                console.log("Source opened, creating source buffer");
-                source!.duration = song.metadata.format.duration;
-                const buf = source!.addSourceBuffer(getMimeType(song));
-                bufferRef.current = buf;
-                console.log("Source buffer created",buf);
-
-                const queue: SongChunk[] = queueRef.current;
-                const buffer = bufferRef.current;
-                // clear the queue
-                queue.length = 0;
-                console.log("Queue cleared", queue);
-                console.log("Preparing listeners for song data");
-                
-
-                buf.onupdateend = () => {
-                    // if there is data in the queue, append it to the buffer
-                    while (queue.length > 0 && !buffer!.updating) {
-                        if (buffer!.updating) break; // if the buffer is updating, break the loop
-                        const data = queue.shift();
-                        console.log("Appending data to buffer", data);
-                        try {
-                            if (data) appendBuffer(data)
-                        } catch (error) {
-                            setError("There was an error in playing the song. Please try again.");
-                        }
-                        
+            buf.onupdateend = () => {
+                // if there is data in the queue, append it to the buffer
+                while (queue.length > 0 && !buffer!.updating) {
+                    if (buffer!.updating) break; // if the buffer is updating, break the loop
+                    const data = queue.shift();
+                    console.log("Appending data to buffer", data);
+                    try {
+                        if (data) appendBuffer(data)
+                    } catch (error) {
+                        setError("There was an error in playing the song. Please try again.");
                     }
-                };
-        
-                console.log("Listening for song data chunks");
-                socket.removeListener(`song data ${song.id}`, songChunkListener); // remove any previous listeners for this song
-                socket.on(`song data ${song.id}`, songChunkListener);
-                // this event is sent in a non timely manner
-                console.log(room)
-                socket.emit(`song data ready`, room?.id, song.id);
-                
-                
-
-                
+                    
+                }
+            };
+    
+            console.log("Listening for song data chunks");
+            socket.removeListener(`song data ${song.id}`, songChunkListener); // remove any previous listeners for this song
+            socket.on(`song data ${song.id}`, songChunkListener);
+            // this event is sent in a non timely manner
+            console.log("Waiting for song data end event");
+            socket.once(`song data end ${song.id}`, () => {
+                console.log("Song data end event received, ending stream");
+                setPendingSong(null);
+                endOfSongRef.current = true; // set end of song to true
             });
-        
-        
-        }   
+            console.log(room)
+            socket.emit(`song data ready`, room?.id, song.id);
+            
+            
+
+            
+        });
+
     }
 
     function songChunkListener(obj: SongChunk) {
-
-    if (obj.chunk_counter == 0) {
-        audioRef.current!.play();
-    }
-    const queue = queueRef.current;
-    // Immediately append if buffer is ready, otherwise queue
-    if (!bufferRef.current?.updating && queue.length === 0) {
-        appendBuffer(obj);
-    } else {
-        queue.push(obj);
-    }
-  }
-
-  useEffect(() => {
-    if (playQueue.length == 1) {
-      setTimeout(() => {
-        if (playQueue.length > 1) return; // if there are more than one song in the queue, don't play the first song
-            
-            const currentSong = playQueue[0];
-            console.log("Registering listeners for song data");
-            socket.once(`song data ${currentSong.id}`, () => {
-                console.log("Removing song from queue after playing");
-                setPlayQueue([...playQueue.filter((_, index) => index !== 0)]); // remove the song from the queue after playing
-            });
-            console.log("Playing song from queue", playQueue[0]);
-            socket.emit(`play song${isOniOS(window) ? " - iOS": ""}`, room!.id, currentSong.id);
-            
-            
-      }, 1000)
-    } else if (playQueue.length > 1) {  
-        console.log("Play queue has more than one song, not playing the first song yet");
-        setPlayQueue([...playQueue.filter((_, index) => index !== 0)]); // remove the first song from the queue
-        console.log("Current play queue:", playQueue);
-    }
-    
-  }, [playQueue]);
-
-  function playSong(song: Song) {
-    console.log(song)
-   
-    if (currentlyPlaying) {
-        if (currentlyPlaying.id == song.id) return;
-        else {
-            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-            isOniOS(window) ? null : socket.emit("stop song", currentlyPlaying.id);
-            socket.removeAllListeners(`song data ${currentlyPlaying.id}`);
+        if (obj.chunk_counter == 0) {
+            audioRef.current!.play();
+        }
+        const queue = queueRef.current;
+        // Immediately append if buffer is ready, otherwise queue
+        if (!bufferRef.current?.updating && queue.length === 0) {
+            appendBuffer(obj);
+        } else {
+            queue.push(obj);
         }
     }
-    console.log("Playing new song")
-    if (audioRef?.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+
+
+    async function playSong(song: Song) {
+        if (currentlyPlaying) {
+            if (currentlyPlaying.id == song.id) return;
+            else {
+                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                isOniOS(window) ? null : socket.emit("stop song", currentlyPlaying.id);
+                socket.removeAllListeners(`song data ${currentlyPlaying.id}`);
+            }   
+        }
+        if (pendingSong && !isOniOS(window)) {
+            if (pendingSong.id === song.id) {
+                console.log("Song is already pending, skipping playback");
+                return;
+            }
+            setNonPendingSong(song);
+            await new Promise(resolve => {
+                console.log(`Waiting for song data end event (${pendingSong!.metadata.common.title})..`);
+                socket.once(`song data end ${pendingSong!.id}`, resolve)
+                socket.emit("stop song", currentlyPlaying!.id);
+                
+            });
+            if (song.id !== nonPendingSongRef.current?.id) {
+                console.log("New song is different from non-pending song");
+                return;
+            }
+        }
+        setNonPendingSong(null);
+        setPendingSong(song);
+
+      
+        console.log("Playing new song")
+        if (audioRef?.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        console.log(`play song${isOniOS(window) ? " - iOS": ""}`)
+        socket.emit(`play song${isOniOS(window) ? " - iOS": ""}`, room!.id, song.id);
+        setCurrentlyPlaying(null) // remove currently playing song
+
+        sourceRef.current = null; // reset sourceRef to allow new song to be played
+        bufferRef.current = null; // reset bufferRef to allow new song to be played
     }
-    console.log(`play song${isOniOS(window) ? " - iOS": ""}`)
-    
-    // 
-    setPlayQueue([...playQueue, song]);
-    setCurrentlyPlaying(null) // remove currently playing song
-    
-    sourceRef.current = null; // reset sourceRef to allow new song to be played
-    bufferRef.current = null; // reset bufferRef to allow new song to be played
-  }
 
-  function stopPlayback() {
-    setCurrentPlaylist(null);
-    setCurrentlyPlaying(null);
-    sourceRef.current = null; // reset sourceRef to allow new song to be played
-    bufferRef.current = null; // reset bufferRef to allow new song to be played
-    audioRef.current!.src = ""; // reset audio source
-  }
-
-  function getNextSong(song: Song, playlist: Playlist) {
-    const currentPlaylist = playlist;
-    const nextSongIndex = currentPlaylist!.songs.findIndex(s => s.id === song.id) + 1;
-    if (nextSongIndex < currentPlaylist!.songs.length) {
-        const nextSong = currentPlaylist!.songs[nextSongIndex];
-        return nextSong;
-    } else {
-        return null;
+    function stopPlayback() {
+        setCurrentPlaylist(null);
+        setCurrentlyPlaying(null);
+        sourceRef.current = null; // reset sourceRef to allow new song to be played
+        bufferRef.current = null; // reset bufferRef to allow new song to be played
+        audioRef.current!.src = ""; // reset audio source
     }
-  }
 
-  function playlistListener() {
-    const currentlyPlaying = currentlyPlayingRef.current;
-    console.log("Playlist ended, playing next song");
-    console.log("Currently playing song:", currentlyPlaying);
-    const nextSong = getNextSong(currentlyPlayingRef.current!, currentPlaylistRef.current!);
-    if (nextSong) {
-        playSong(nextSong);
-        setNextUp(getNextSong(nextSong!, currentPlaylistRef.current!));
-    } else {
-        console.log("No more songs in the playlist");
-        stopPlayback();
+    function getNextSong(song: Song, playlist: Playlist) {
+        const currentPlaylist = playlist;
+        const nextSongIndex = currentPlaylist!.songs.findIndex(s => s.id === song.id) + 1;
+        if (nextSongIndex < currentPlaylist!.songs.length) {
+            const nextSong = currentPlaylist!.songs[nextSongIndex];
+            return nextSong;
+        } else {
+            return null;
+        }
+    }
+
+    function playlistListener() {
+        const currentlyPlaying = currentlyPlayingRef.current;
+        console.log("Playlist ended, playing next song");
+        console.log("Currently playing song:", currentlyPlaying);
+        const nextSong = getNextSong(currentlyPlayingRef.current!, currentPlaylistRef.current!);
+        if (nextSong) {
+            playSong(nextSong);
+            setNextUp(getNextSong(nextSong!, currentPlaylistRef.current!));
+        } else {
+            console.log("No more songs in the playlist");
+            stopPlayback();
+            audioRef.current!.removeEventListener('ended', playlistListener);
+        }
+    }
+    function playlist(playlist: Playlist, song: Song) {
         audioRef.current!.removeEventListener('ended', playlistListener);
+        console.log("Playing playlist", playlist);
+        setCurrentPlaylist(playlist);
+        playSong(song)
+        if (audioRef.current) {
+            audioRef.current.addEventListener('ended', playlistListener);
+        }
+        if (nextUp == null || nextUp.id !== song.id) {
+            console.log("Next song not set")
+            setNextUp(getNextSong(song,playlist));
+        } else {
+            console.log("Next song already set to", nextUp);
+        }
     }
-  }
-  function playlist(playlist: Playlist, song: Song) {
-    audioRef.current!.removeEventListener('ended', playlistListener);
-    console.log("Playing playlist", playlist);
-    setCurrentPlaylist(playlist);
-    playSong(song)
-    if (audioRef.current) {
-        audioRef.current.addEventListener('ended', playlistListener);
-    }
-    if (nextUp == null || nextUp.id !== song.id) {
-        console.log("Next song not set")
-        setNextUp(getNextSong(song,playlist));
-    } else {
-        console.log("Next song already set to", nextUp);
-    }
-  }
 
     useEffect(() => {
         currentlyPlayingRef.current = currentlyPlaying;
@@ -343,18 +369,50 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     }, [currentPlaylist]);
 
     useEffect(() => {
+       socket.on('connected', () => {
+           socket.emit('get rooms');
+       });
+    }, []);
+    useEffect(() => {
 
-        socket.emit('get rooms')
+        
         socket.on('available rooms', (data: Room[]) => {
             console.log("Received rooms:", data);
             setRooms(data);
             roomsRef.current = data; // update the roomsRef with the new rooms
         })
         socket.on('songs', (songs: Song[]) => {
-            setSongs(songs);
-            console.log("Received songs:", songs);
+            const addSong = (song: Song, index: number) => {
+                setSongs(prevSongs => {
+                    const newSongs = [...(prevSongs || []), song];
+                    return newSongs;
+                });
+                if (index !== songs.length - 1) {
+                    index += 1;
+                    setTimeout(() => {
+                        addSong(songs[index], index);
+                    }, 50);
+                } else return;
+            };
+            addSong(songs[0], 0);
         });
-        socket.on('playlists', (playlists: Playlist[]) => setPlaylists(playlists));
+        socket.on('playlists', (playlists: Playlist[]) => {
+            console.log("Received playlists:", playlists);
+            const addPlaylist = (playlist: Playlist, index: number) => {
+                setPlaylists(prevPlaylists => {
+                    const newPlaylists = [...(prevPlaylists || []), playlist];
+                    console.log("New playlists array:", newPlaylists);
+                    return newPlaylists;
+                });
+                if (index !== playlists.length - 1) {
+                    index += 1;
+                    setTimeout(() => {
+                        addPlaylist(playlists[index], index);
+                    }, 50);
+                } else return;
+            };
+           
+        });
 
         // freezes right after joining a room, eventually unfreezes.
         socket.on('status', (state: string) => {
@@ -382,13 +440,21 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             };
             console.log("State changed to:", state);
         });
-    },[]);
+
+        return () => {
+            socket.removeAllListeners('available rooms');
+            socket.removeAllListeners('songs');
+            socket.removeAllListeners('playlists');
+            socket.removeAllListeners('status');
+        }
+    });
 
     useEffect(() => {
 
         
         
-        socket.on("song data - iOS", (song: Song) => setCurrentlyPlaying(song))
+        socket.on("song data - iOS", (song: Song) => setCurrentlyPlaying(song));
+        
         socket.on("song playlist - iOS", (playlist_url: string) => {
             console.log("Playlist URL:", playlist_url)
 
@@ -423,7 +489,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         return () => {
             socket.removeAllListeners('song data - iOS');
             socket.removeAllListeners('song playlist - iOS');
-            socket.removeAllListeners("song data end")
+            socket.removeListener("song data end", )
             socket.removeAllListeners("song data")
             socket.removeAllListeners('error');
             
@@ -431,17 +497,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [rooms]);
 
-        useEffect(() => {
-
-            socket.on('song data start', (song: Song, total_chunks: number, initiator: { name: string, id: string}) => {
-                console.log("Song data start received:", song, total_chunks, initiator, room);
-                songDataListener(song, total_chunks, initiator, room!);
-            });
-
-            return () => {
-                socket.removeAllListeners('song data start');
-            }
-        });
+        
 
         useEffect(() => {
 
@@ -527,7 +583,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
         useEffect(() => {
             if(currentlyPlaying) {
-                playerRef.current!.style.height = `calc(${isOniOS(window) ? `${0.8 * window.innerHeight}px` : "80vh" } - ${playingRef.current!.offsetHeight}px)`
+                console.log(`calc(${window.innerHeight}px - ${playingRef.current!.getBoundingClientRect().height + headerRef.current!.getBoundingClientRect().height}px - ${window.getComputedStyle(playingRef.current!).marginBottom})`)
+                playerRef.current!.style.height = `calc(${document.documentElement.clientHeight}px - ${playingRef.current!.getBoundingClientRect().height + headerRef.current!.getBoundingClientRect().height}px - ${window.getComputedStyle(playingRef.current!).marginBottom})`
             } else {
                 if(playerRef.current) {
                     playerRef.current!.style.height = ``;
@@ -543,6 +600,18 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         <>
             <button className='danger' onClick={() => {
                     socket.emit('leave room',room!.id)
+                    setPendingSong(null);
+                    setCurrentlyPlaying(null);
+                    joinRoom(null);
+                    setSongs([]);
+                    setPlayState(false);
+                    setCurrentPlaylist(null);
+                    setPlaylistView(null);
+                    setNextUp(null);
+                    setInitiator(null);
+                    setNonPendingSong(null);
+                    setError(undefined);
+                    
                 }}>Leave room</button>
             <button onClick={() => {
                 console.log("upload dialog");
@@ -574,8 +643,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 setPlayState(!playing);
             }
         }}>
-            <audio className="audio-controls" autoPlay={true} controls={true} ref={audioRef}>
-            </audio>
+            
             {error ?  (
                 <Overlay>
                     <h1>There was an error</h1>
@@ -645,11 +713,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     <div className='currently-playing playlist-view' style={{padding: "3%", marginTop: "5%"}}>
                         
                         <img className="playlist-album-cover" 
-                            src={`data:${playlistView.album_cover.format};base64,${window.btoa(
-                                new Uint8Array(playlistView.album_cover.data).reduce(
-                                    (data, byte) => data + String.fromCharCode(byte), ''
-                                )
-                            )}`} 
+                            src={new Blob([new Uint8Array(playlistView.album_cover.data)], { type: playlistView.album_cover.format }) ? URL.createObjectURL(new Blob([new Uint8Array(playlistView.album_cover.data)], { type: playlistView.album_cover.format })) : undefined}
                             alt={`${playlistView.name} album cover`}
                         />
                         <h1>{playlistView.name}</h1>
@@ -666,7 +730,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         const coverArr = new Uint8Array(picture[0].data);
                         string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
                     }
-                    const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
+                    const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
                     return (
                         <div className='player-list-item' key={song.id} onClick={() => {
                             setPlaylistView(null); // close playlist view when a song is played
@@ -760,25 +824,27 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         { initiator && initiator.id !== socket.id ? (
                             <p className='initiator'>{initiator.name} is playing</p>
                         ) : null}
-                    <div className='top-group'>
-                        
-                        {currentlyPlaying.metadata.common.picture ? (
-                                <img 
-                                    className="album-cover" 
-                                    src={`data:${currentlyPlaying.metadata.common.picture[0].format};base64,${window.btoa(
-                                        new Uint8Array(currentlyPlaying.metadata.common.picture[0].data).reduce(
-                                            (data, byte) => data + String.fromCharCode(byte), ''
-                                        )
-                                    )}`} 
-                                    alt={`${currentlyPlaying.metadata.common.title} album cover`}
-                                />
-                            ) : null}
-                        <div className='song-info-group'>
-                            <h1 className='song-title'>{currentlyPlaying.metadata.common.title}</h1>
-                            <p className='song-artist'>{currentlyPlaying.artist_str}</p>
-                            {nextUp ? (<p className='song-artist'>Next up: {nextUp?.metadata.common.title} by {nextUp?.metadata.common.artist}</p>) : null}
+                        <div>
+                            <div className='top-group'>
+                            
+                            {currentlyPlaying.metadata.common.picture ? (
+                                    <img 
+                                        className="album-cover" 
+                                        src={new Blob([new Uint8Array(currentlyPlaying.metadata.common.picture[0].data)], { type: currentlyPlaying.metadata.common.picture[0].format }) ? URL.createObjectURL(new Blob([new Uint8Array(currentlyPlaying.metadata.common.picture[0].data)], { type: currentlyPlaying.metadata.common.picture[0].format })) : undefined}
+                                        alt={`${currentlyPlaying.metadata.common.title} album cover`}
+                                    />
+                                ) : null}
+                            <div className='song-info-group'>
+                                <h1 className='song-title'>{currentlyPlaying.metadata.common.title}</h1>
+                                <p className='song-artist'>{currentlyPlaying.artist_str}</p>
+                                {nextUp ? (<p className='song-artist'>Next up: {nextUp?.metadata.common.title} by {nextUp?.metadata.common.artist}</p>) : null}
+                                
+                            </div>
+                            
                         </div>
+                        <audio className="audio-controls" autoPlay={true} controls={true} ref={audioRef} />
                     </div>
+
                     {/* <div className='controls'>
                             <div className='buttons'>
                                 {playing ? <Pause onClick={() => {setPlayState(false)}} />: <Play onClick={() => {setPlayState(true)}}/>}
@@ -810,10 +876,11 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                             const coverArr = new Uint8Array(picture[0].data);
                             string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
                         }
-                        const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
+                        const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
                         return (
-                            <div className='player-list-item' key={song.id} onClick={() => {
+                            <div className={`player-list-item ${nonPendingSong && nonPendingSong .id === song.id ? 'clicked' : ''}`} key={song.id} onClick={() => {
                                 playSong(song);
+                                
                                 setPlaylistView(null); // close playlist view when a song is played
                                 if (currentPlaylist) {
                                     setCurrentPlaylist(null); // reset current playlist when a song is played
@@ -837,7 +904,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                             const coverArr = new Uint8Array(picture.data);
                             string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
                         }
-                        const album_cover_data = picture !== undefined ? `data:${picture.format};base64,${window.btoa(string_char!)}`: undefined;
+                        const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture.data)], { type: picture.format })) : undefined;
                         return (
                             <div className='player-list-item' key={playlist.id} onClick={() => {
                                 setPlaylistView(playlist);}}>

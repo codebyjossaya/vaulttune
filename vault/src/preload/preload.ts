@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAuthState: () => {
     return Promise.race([
       ipcRenderer.invoke('get-auth-state'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout fetching auth state")), 5000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout fetching auth state")), 60000))
     ]);
   },
   signIn: (api?: string) => ipcRenderer.invoke('sign-in', api),

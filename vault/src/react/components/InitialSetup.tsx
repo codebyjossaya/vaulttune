@@ -98,16 +98,16 @@ export function InitialSetup({setOptions, authState}: {setOptions: (options: Opt
             isOpen={networkOverlay}
             onClose={() => setNetworkOverlay(false)}
         >
-            <h2>Automatic tunneling with localhost.run</h2>
-            <p>VaultTune provides a built-in tunneling service using localhost.run. This 
-                allows you to easily and securely access your vault from outside your network without 
-                having to configure port forwarding on your router. It is built directly into VaultTune 
+            <h2>Automatic tunneling with Cloudflare</h2>
+            <p>VaultTune provides a built-in tunneling service using Cloudflare. This
+                allows you to easily and securely access your vault from outside your network without
+                having to configure port forwarding on your router. It is built directly into VaultTune
                 and provides a seamless experience.</p>
-            <p>Should you elect to use automatic tunneling, you acknowledge that data transmitted by 
-                your Vault (including song metadata, encrypted user tokens, and other information) 
-                will be sent through localhost.run's servers. This data is encrypted and not stored 
-                by localhost.run. </p>
-            <p>For more information, please refer to the <a href="https://localhost.run/" target="_blank" rel="noopener noreferrer">localhost.run website</a>.</p>
+            <p>Should you elect to use automatic tunneling, you acknowledge that data transmitted by
+                your Vault (including song metadata, encrypted user tokens, and other information)
+                will be sent through Cloudflare's servers. This data is encrypted and not stored
+                by Cloudflare. You also agree to the Cloudflare License, Privacy Policy, and Terms & Conditions.</p>
+            <p>For more information, please refer to the <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/" target="_blank" rel="noopener noreferrer">Cloudflare website</a>.</p>
             <p>Do you wish to continue?</p>
             <button onClick={() => {
                 setNetworkMethod("tunneling");
@@ -190,7 +190,7 @@ export function InitialSetup({setOptions, authState}: {setOptions: (options: Opt
             <>
                <h2>Manual port forwarding or automatic tunneling?</h2>
                <p>To access your Vault outside your network and sync with your VaultTune account,
-                   you need to set up port forwarding on your router or use the provided tunneling service, <a onClick={() => console.log("Tunneling service clicked")}>localhost.run</a>.
+                   you need to set up port forwarding on your router or use the provided tunneling service, <a onClick={() => console.log("Tunneling service clicked")}>Cloudflare Quick Tunnel</a>.
                </p>
             </>
         )

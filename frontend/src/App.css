@@ -494,7 +494,7 @@ margin-bottom: 0;
   justify-content: center;
   flex-direction: column; 
   z-index: 1000;
-  margin: 0;
+  margin-bottom: 4em;
   padding: 0 20px;
   overflow: hidden;
   border-bottom-left-radius: 20px;
@@ -568,6 +568,11 @@ margin-bottom: 0;
   float: left;
 }
 
+.clicked {
+  color: green;
+  font-weight: bold;
+  transform: scale(1.02);
+}
 
 
 .album-cover-container::after {
@@ -587,6 +592,7 @@ margin-bottom: 0;
   flex: 1;
   gap: 8px;
   z-index: 0;
+  margin: 30px;
 }
 
 .song-info-group {
@@ -597,10 +603,8 @@ margin-bottom: 0;
 }
 
 .audio-controls {
-  position: absolute;
-  bottom: 0;
   z-index: 10;
-  width: 90vw;
+  width: 100%;
   display: flex;
   justify-content: center;
 }
@@ -625,3 +629,5 @@ margin-bottom: 0;
   justify-content: center;
   align-items: center;
 }
+
+

@@ -1,6 +1,6 @@
 {
   "name": "vt_backend",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "VaultTune's backend server for most non-Vault features, including Cloud Sync and VaultShare.",
   "main": "main.js",
   "type": "module",

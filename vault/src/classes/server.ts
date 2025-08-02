@@ -25,6 +25,8 @@ import type Playlist from "./playlist";
 import keytar from "keytar";
 import { ipcMain, app } from "electron";
 import { homedir } from "os";
+import ssh2 from "ssh2"
+import type { Tunnel } from "cloudflared";
 
 
 export default class Server {
@@ -33,7 +35,7 @@ export default class Server {
     public user: UserRecord | undefined;
     public httpServer: httpServer;
     public rooms: Room[] = [];
-    public tunnel: localtunnel.Tunnel | undefined;
+    public tunnel: Tunnel | null = null;
     public options: ServerOptions | Options;
     public address: string | null = null;
     public rpc: Client | null = null;
@@ -50,15 +52,23 @@ export default class Server {
             console.warn("No API endpoint set. Using default: https://api.vaulttune.jcamille.dev");
         }
         this.app = express();
+
+        this.app.options('/socket.io/*', (req, res) => {
+            console.log('🔍 Preflight OPTIONS request received!', req.headers);
+            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Content-Type,X-Pinggy-No-Screen,bypass-tunnel-reminder');
+            res.header('Access-Control-Max-Age', '86400');
+            res.status(200).end();
+        });
         this.app.use(cors({
             origin: '*', // NOTE: Use specific origins in production!
             methods: ['GET', 'POST', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'bypass-tunnel-reminder'],
+            allowedHeaders: ['Content-Type', 'bypass-tunnel-reminder', 'X-Pinggy-No-Screen', "Access-Control-Allow-Origin", "Access-Control-Request-Headers"],
         }))
         this.httpServer = createServer(this.app);
 
         this.io = new SocketServer(this.httpServer, {
-            transports: ['websocket', 'polling'],
             cors: {
                 origin: "*",
                 methods: ["GET", "POST","OPTIONS"],
@@ -214,6 +224,8 @@ export default class Server {
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                     this.stoppers.delete(`${socket.id}-${id}`);
+                    console.log(`Sending song data end event for song ${id} to device ${socket.id}`);
+                    socket.emit(`song data end ${id}`);
                 } else {
                     socket.emit("error", "No song is currently playing on this device");
                     return;
