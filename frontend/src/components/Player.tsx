@@ -725,11 +725,6 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
                     const picture = song.metadata.common.picture;
                     // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
-                    let string_char;
-                    if(picture) {
-                        const coverArr = new Uint8Array(picture[0].data);
-                        string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
-                    }
                     const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
                     return (
                         <div className='player-list-item' key={song.id} onClick={() => {
@@ -871,11 +866,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
                         const picture = song.metadata.common.picture;
                         // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
-                        let string_char;
-                        if(picture) {
-                            const coverArr = new Uint8Array(picture[0].data);
-                            string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
-                        }
+                       
                         const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
                         return (
                             <div className={`player-list-item ${nonPendingSong && nonPendingSong .id === song.id ? 'clicked' : ''}`} key={song.id} onClick={() => {
@@ -899,11 +890,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     }) : playlists.length < 1 ? <p>No playlists found</p> : playlists.map((playlist) => {
                         const picture = playlist.album_cover;
                         // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
-                        let string_char;
-                        if(picture) {
-                            const coverArr = new Uint8Array(picture.data);
-                            string_char = coverArr.reduce((data, byte)=> data + String.fromCharCode(byte), '');
-                        }
+                        
                         const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture.data)], { type: picture.format })) : undefined;
                         return (
                             <div className='player-list-item' key={playlist.id} onClick={() => {

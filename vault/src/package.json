@@ -15,6 +15,46 @@
     "package": "electron-forge package",
     "make": "electron-forge make"
   },
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "asar": true
+      },
+      "rebuildConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "vaulttune"
+          },
+          "platforms": [
+            "win32"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin",
+            "win32"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ],
+      "plugins": [
+        {
+          "name": "@electron-forge/plugin-auto-unpack-natives",
+          "config": {}
+        }
+      ]
+    }
+  },
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -45,7 +85,6 @@
     "readline-sync": "^1.4.10",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "ssh2": "^1.16.0",
     "typescript": "^5.8.2",
     "web-vitals": "^2.1.4"
   },
@@ -75,12 +114,5 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
-  },
-  "productName": "VaultTune",
-  "build": {
-    "appId": "com.vaulttune",
-    "win": {
-      "target": "squirrel"
-    }
   }
 }
