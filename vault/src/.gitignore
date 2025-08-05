@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 out/
+
+*.js.map
+
+dist/
+dist-electron/

@@ -16,13 +16,13 @@ export default class Playlist {
     }
     addSong(song: Song) {
         if(this.songs.length == 0 && song.metadata.common.picture) this.album_cover = song.metadata.common.picture[0]    
-        this.songs.push(song)
+        this.songs.push(song.exportSong() as Song);
     }
     removeSong(song: Song) {
         this.songs = this.songs.filter(member => member.path !== song.path)
     }
     getSongs() {
-        return this.songs.map((song:Song) => song.exportSong());
+        return this.songs;
     }
     exportPlaylist() {
         return {

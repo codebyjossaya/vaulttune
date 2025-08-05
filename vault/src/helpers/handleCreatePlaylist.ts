@@ -3,17 +3,17 @@ import Room from "../classes/room";
 import Server from "../classes/server";
 import Song from "../classes/song";
 import Playlist from "../classes/playlist";
-import { User } from "../interfaces/types";
+import { ConnectedUser } from "../interfaces/types";
 
 
-export function handleCreatePlaylist(t: Server, socket: Socket, room_id: string, name: string, song_ids: string[]) {
+export function handleCreatePlaylist(t: Server, socket: ConnectedUser, room_id: string, name: string, song_ids: string[]) {
     console.log(`Device ${socket.id} is attempting to create a playlist named ${name} in ${room_id} wuth ${song_ids.length} songs.`)
     const room: Room | undefined = t.rooms.find((element: Room) => element.id === room_id);
     if (room === undefined) {
         socket.emit("error","Room not found");
         return;
     }
-    const members: User[] = room!.getMembers();
+    const members: ConnectedUser[] = room!.getMembers();
         if (members.find(member => member.id === socket.id) === undefined) {
         socket.emit("error","User has not joined this room");
         return;

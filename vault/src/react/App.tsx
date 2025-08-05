@@ -55,7 +55,7 @@ function PassAuthState({ authState }: { authState: AuthState }) {
 }
 
 function App() {
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning'; } | null>(null);
+  const [notifications, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning' }[]>([]);
   const [authState, setAuthState] = useState<AuthState>({ authenticated: false });
   const [loading, setLoading] = useState<boolean>(true);
   
@@ -63,7 +63,7 @@ function App() {
         console.log("Manager component mounted");
         window.electronAPI.setNotificationCallback((message, type) => {
             console.log("Notification received:", message, type);
-            setNotification({ message, type });
+            setNotification((prev) => [...prev, { message, type }]);
         });
     }, []);
   useEffect(() => {
@@ -85,7 +85,17 @@ function App() {
 
   return (
     <NotificationContext.Provider value={setNotification}>
-      {notification ? <Notification message={notification.message} type={notification.type} dismiss={() => setNotification(null)} /> : null}
+      {notifications.length > 0 ? <div className='notification-container'>
+        {notifications.map((n, index) => (
+        <Notification
+          key={index}
+          message={n.message}
+          type={n.type}
+          dismiss={() => setNotification((prev) => prev.filter((_, i) => i !== index))}
+        />
+
+      ))}
+      </div> : null}
       <AuthContext.Provider value={{ authState, setAuthState }}>
         {authState.authenticated ? (
           <PassAuthState authState={authState} />

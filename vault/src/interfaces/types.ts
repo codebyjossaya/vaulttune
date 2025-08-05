@@ -27,6 +27,7 @@ export class User {
     public name: string;
     public email: string;
     public avatar?: string;
+    public status?: 'connected' | 'disconnected';
 }
 
 export class PendingRequest {
@@ -44,7 +45,7 @@ export interface Room {
     dirs: string[];
 }
 
-export interface User extends Socket {
+export interface ConnectedUser extends Socket {
     data: {
         firebase?: {
             uid: string;

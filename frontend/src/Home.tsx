@@ -206,6 +206,14 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       socket.on('connect', () => {
         console.log("connected")
         socket.emit('get rooms')
+        if ('mediaSession' in navigator) {
+            console.log("MediaSession API is supported, setting metadata");
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: "VaultTune Player",
+                artist: "VaultTune",
+                album: "VaultTune",
+            });
+        }
         setConnected(true)
       })
       socket.on('error',(error) => {
@@ -216,6 +224,10 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
             console.log("disconnected", reason)
             setConnected(false);
             setLoading(false);
+            if ('mediaSession' in navigator) {
+                  console.log("MediaSession API is supported, setting metadata");
+                  navigator.mediaSession.metadata = null;
+              }
       })
         } 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,7 +286,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       pointerEvents: 'none',
       zIndex: 1000
     }}>
-      current version v1.3.0
+      current version v1.2.1
     </div>
     {error ?  (
                 <Overlay>

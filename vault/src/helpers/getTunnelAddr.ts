@@ -1,8 +1,5 @@
 import { spawn } from "child_process";
-import localtunnel from "localtunnel";
 import Server from "../classes/server"
-import nodessh from "node-ssh"
-import ssh2 from "ssh2"
 import { Tunnel } from "cloudflared";
 export function getTunnelAddr(t: Server, port: number): Promise<string> {
     return new Promise(async (resolve, reject) => {
@@ -10,6 +7,7 @@ export function getTunnelAddr(t: Server, port: number): Promise<string> {
             t.tunnel = Tunnel.quick("http://localhost:" + port);
             t.tunnel.on("error", (error: any) => {
                 console.error("Tunnel error:", error);
+                reject(error);
             });
             t.tunnel.on("exit", () => {
                 console.log("Tunnel exited");
@@ -26,6 +24,6 @@ export function getTunnelAddr(t: Server, port: number): Promise<string> {
             console.error("There was an error creating a tunnel: ", error);
             reject(error);
         }
-        console.log("Connecting to localtunnel...");
+        console.log("Connecting to Cloudflare Quick Tunnel...");
     })
 }

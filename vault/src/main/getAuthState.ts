@@ -29,7 +29,7 @@ export function getAuthState(): Promise<AuthState> {
         const api = server.options.api || 'https://api.vaulttune.jcamille.dev';
         server.options.token = token;
         try {
-            const response = await Promise.race([verifyToken(token, api), new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("Token verification timed out")), 5000))]);
+            const response = await Promise.race([verifyToken(token, api), new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("Token verification timed out")), 60000))]);
             if (!response.ok) {
                 const data: { error?: string } = await response.json();
                 if (data.error === "Error: Vault token is required") {

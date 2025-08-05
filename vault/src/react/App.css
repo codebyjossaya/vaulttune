@@ -588,14 +588,19 @@ hr {
   align-items: center;
 }
 
-.notification {
-  position: fixed;
+ .notification-container{
+  position: absolute;
+  display: flex;
+  flex-direction: column;
   top: 20px;
   right: 20px;
+  z-index: 2000;
+}
+
+ .notification {
   background-color: rgba(0, 0, 0, 0.8);
   color: white;
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  z-index: 2000;
 }

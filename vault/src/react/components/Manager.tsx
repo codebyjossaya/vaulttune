@@ -21,7 +21,7 @@ export function Manager({settings, setSettings}: {settings: Options, setSettings
     const [signOutOverlay, setSignOutOverlay] = useState<boolean>(false);
     const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: window.innerWidth, height: window.innerHeight });
     const [divSize, setDivSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-    const setNotification = useContext(NotificationContext) as NotificationSetter;
+    const setNotifications = useContext(NotificationContext) as NotificationSetter;
     const {authState, setAuthState} = useContext(AuthContext) as { authState: AuthState; setAuthState: React.Dispatch<React.SetStateAction<AuthState>> };
 
     const [loadingOverlay, setLoadingOverlay] = useState<string | false>(false);
@@ -34,7 +34,9 @@ export function Manager({settings, setSettings}: {settings: Options, setSettings
     const playerCardRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLDivElement>(null);
 
-    
+    const setNotification = (notification: { message: string; type: 'success' | 'error' | 'warning' }) => {
+        setNotifications((prev) => [...prev, notification]);
+    }
     function changeSettings() {
         console.log("Changing settings...");
         if (!settings) {
@@ -437,6 +439,20 @@ export function Manager({settings, setSettings}: {settings: Options, setSettings
                         <h3>{user.name}</h3>
                         <small>{user.email}</small>
                         <small>ID: {user.uid}</small>
+                        { user.status ? (
+                            <>
+                                <div
+                                style={{
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '50%',
+                                    backgroundColor: user.status === 'connected' ? 'green' : 'gray',
+                                    marginRight: '8px',
+                                }}
+                                ></div>
+                                <span>{user.status === 'connected' ? 'Connected' : 'Disconnected'}</span>
+                            </>
+                        ) : null}
                     </div>
                     <button className='danger' style={{ marginLeft: 'auto' }} onClick={() => {
                        

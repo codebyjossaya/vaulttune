@@ -1,8 +1,8 @@
-import { Server as SocketServer, Socket } from "socket.io";
+import { Server as SocketServer } from "socket.io";
 import Room from "./room";
 import { handleUploadSong } from "../helpers/handle_upload_song";
 import { handleJoinRoom } from "../helpers/handle_join_room";
-import { ServerOptions, Options, User } from "../interfaces/types";
+import { ServerOptions, Options, ConnectedUser } from "../interfaces/types";
 import { handleGetSongs } from "../helpers/handle_get_songs";
 import { createServer, Server as httpServer } from "http";
 import { handleDisconnect } from "../helpers/handle_disconnect";
@@ -17,7 +17,6 @@ import { Client } from "discord-rpc";
 import { initializeRPC } from "../helpers/discordRichPresence";
 import { registerVault } from "../helpers/registerVault";
 import cors from 'cors';
-import type * as localtunnel from "localtunnel";
 import type { UserRecord } from "firebase-admin/auth";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import type Song from "./song";
@@ -40,7 +39,7 @@ export default class Server {
     public address: string | null = null;
     public rpc: Client | null = null;
     public state: "online" | "offline" | "error" = "offline";
-    public users: User[] = [];
+    public users: ConnectedUser[] = [];
     public stoppers: Map<string, NodeJS.Timeout> = new Map();
     public notify?: (message: string, type: "success" | "error" | "warning") => void;
 
@@ -106,7 +105,7 @@ export default class Server {
             });
         });
 
-        this.io.on('connection', (socket: User) => {
+        this.io.on('connection', (socket: ConnectedUser) => {
             console.log(`Device ${socket.id} has connected to the server`)
             this.notify(`${socket.data.firebase.displayName} has connected to the server (${socket.id})`, "success");
             socket.emit("status","Connection recieved");
@@ -118,7 +117,6 @@ export default class Server {
             socket.on('leave room', (room_id) => {handleLeaveRoom(this,socket,room_id)});
             // handlers
             socket.on('join room',(id: string) => (handleJoinRoom(this,socket, id)));
-
             socket.on('play song', (room_id: string, song_id: string) => {
                 console.log(`Device ${socket.id} is requesting song ${song_id} from room ${room_id}`)
 
@@ -262,7 +260,7 @@ export default class Server {
             });
             socket.on('play song - iOS', (room_id: string, song_id: string) => handleiOSPlaySong(this, socket, room_id, song_id));
             socket.on('upload song', (room_id: string, buf: ArrayBuffer) => {handleUploadSong(this,socket,room_id,buf)});
-            socket.on('get songs', (room_id: string) => {handleGetSongs(this,socket,room_id)});
+            socket.on('get songs', (room_id: string, offset: number, limit: number) => {handleGetSongs(this,socket,room_id,offset,limit)});
             socket.on('get playlists', (room_id: string) => {handleGetPlaylists(this,socket,room_id)});
             socket.on('create playlist', (room_id: string, name: string, song_ids: string[]) => handleCreatePlaylist(this,socket,room_id,name,song_ids));
             socket.on('disconnect', () => {handleDisconnect(this,socket)});

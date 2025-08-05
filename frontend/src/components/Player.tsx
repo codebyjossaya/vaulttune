@@ -42,6 +42,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     const [initiator, setInitiator] = useState<{ name: string, id: string} | null>(null);
     const [pendingSong, setPendingSong] = useState<Song | null>(null);
     const [nonPendingSong, setNonPendingSong] = useState<Song | null>(null);
+    const [loadedSongsData, setLoadedSongsData] = useState<{offset: number, limit: number} | null >({offset: 0, limit: 20});
 
     const audioRef = useRef<HTMLAudioElement>(null)
     const playingRef = useRef<HTMLDivElement>(null);
@@ -69,31 +70,29 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     const socket = config.socket!;
 
     useEffect(() => {
-        console.log(`[STRICT MODE CHECK] useEffect running at ${Date.now()}`);
-        console.log(`[STRICT MODE CHECK] Current listeners before:`, socket.listeners('song data start').length);
         
         const listener = (song: Song, total_chunks: number, initiator: { name: string, id: string}) => {
             console.log(`[EVENT] Song data start received - listener instance:`, listener.toString().slice(0, 50));
             songDataListener(song, total_chunks, initiator, room!);
         }
-        
-        // Add a unique identifier to the listener for debugging
-        (listener as any).__debugId = Math.random().toString(36).substr(2, 9);
-        console.log(`[STRICT MODE CHECK] Registering listener with ID:`, (listener as any).__debugId);
-        
         socket.on('song data start', listener);
-        console.log(`[STRICT MODE CHECK] Current listeners after:`, socket.listeners('song data start').length);
         
         return () => {
-            console.log(`[STRICT MODE CHECK] Cleanup running for listener:`, (listener as any).__debugId);
             socket.removeListener('song data start', listener);
-            console.log(`[STRICT MODE CHECK] Current listeners after cleanup:`, socket.listeners('song data start').length);
         };
-}, [room]);
+    }, [room]);
 
 
     const user = config.user!;
     const signOut = config.signOut;
+    const waitForAudioRef = async () => {
+            let retries = 0;
+            while (!audioRef.current && retries < 20) {
+                await new Promise(res => setTimeout(res, 50));
+                console.log("Waiting for audioRef to be available...");
+                retries++;
+            }
+        };
 
     function checkSourceBufferDuration(expectedDuration: number) {
         if (bufferRef.current) {
@@ -131,18 +130,13 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     async function songDataListener(song: Song, total_chunks: number, initiator: { name: string, id: string}, room: Room) {
         // record the total number of chunks
         console.log(`Total chunks: ${total_chunks}`)
-        if (song.metadata.common.artists.length > 1) {
-            song.artist_str = "";
-            const artists: string[] = song.metadata.common.artists;
-            artists.forEach((artist, index) => {
-                if (index == artists.length - 1) song.artist_str += `, and ${artist}`;
-                else {
-                if (artist != "") song.artist_str += artist + ", ";
-                }
-            });
-            } else {
-            song.artist_str = song.metadata.common.artist;
-        }
+        song.artist_str = "";
+
+        const artists: string[] = song.metadata.common.artists;
+
+        if (artists.length == 1) song.artist_str = artists[0];
+        else if (artists.length == 2) song.artist_str = `${artists[0]} and ${artists[1]}`;
+        else song.artist_str = artists.slice(0, -1).join(', ') + ', and ' + artists[artists.length - 1];
         if (currentlyPlaying && pendingSong && currentlyPlaying.id === pendingSong.id && song.id !== currentlyPlaying.id) {
             console.log("Removing currently playing song because a new song is being played");
             socket.removeListener(`song data ${currentlyPlaying.id}`, songChunkListener); // remove any previous listeners for this song
@@ -153,14 +147,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         // ending a song that is currently loading (waiting for data)
 
         // Wait for the new audioRef to be available before proceeding
-        const waitForAudioRef = async () => {
-            let retries = 0;
-            while (!audioRef.current && retries < 20) {
-                await new Promise(res => setTimeout(res, 50));
-                console.log("Waiting for audioRef to be available...");
-                retries++;
-            }
-        };
+        
         
         // Adding song info to MediaSession
         if ('mediaSession' in navigator) {
@@ -186,6 +173,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         }
                     ]
                 });
+                
                 navigator.mediaSession.setActionHandler('nexttrack', () => {
                     audioRef.current!.currentTime = audioRef.current!.duration;
                     console.log("Next track action handler called, skipping to end of song");
@@ -317,6 +305,14 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         sourceRef.current = null; // reset sourceRef to allow new song to be played
         bufferRef.current = null; // reset bufferRef to allow new song to be played
         audioRef.current!.src = ""; // reset audio source
+        if ('mediaSession' in navigator) {
+            console.log("MediaSession API is supported, setting metadata");
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: "VaultTune Player",
+                artist: "VaultTune",
+                album: "VaultTune",
+            });
+        }
     }
 
     function getNextSong(song: Song, playlist: Playlist) {
@@ -332,7 +328,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
     function playlistListener() {
         const currentlyPlaying = currentlyPlayingRef.current;
-        console.log("Playlist ended, playing next song");
+        console.log("Song ended, playing next song");
         console.log("Currently playing song:", currentlyPlaying);
         const nextSong = getNextSong(currentlyPlayingRef.current!, currentPlaylistRef.current!);
         if (nextSong) {
@@ -344,14 +340,24 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             audioRef.current!.removeEventListener('ended', playlistListener);
         }
     }
-    function playlist(playlist: Playlist, song: Song) {
-        audioRef.current!.removeEventListener('ended', playlistListener);
+    async function playlist(playlist: Playlist, song: Song) {
         console.log("Playing playlist", playlist);
         setCurrentPlaylist(playlist);
-        playSong(song)
-        if (audioRef.current) {
-            audioRef.current.addEventListener('ended', playlistListener);
-        }
+        await playSong(song);
+        
+        socket.once('song data start', async () => {
+            console.log("Song data start received");
+            if (!audioRef.current) {
+                console.log("AudioRef not available, waiting for it to be ready");
+                await waitForAudioRef();
+                console.log("AudioRef is now available");
+            
+            }
+            console.log("Adding ended event listener to audioRef");
+            audioRef.current!.addEventListener('ended', playlistListener);
+        })
+        
+        
         if (nextUp == null || nextUp.id !== song.id) {
             console.log("Next song not set")
             setNextUp(getNextSong(song,playlist));
@@ -381,38 +387,25 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             setRooms(data);
             roomsRef.current = data; // update the roomsRef with the new rooms
         })
-        socket.on('songs', (songs: Song[]) => {
-            const addSong = (song: Song, index: number) => {
+        socket.on('songs', (total: number, offset: number, limit: number, songs: Song[]) => {
+            console.log(`Received ${songs.length} with offset ${offset} and limit ${limit}`);
+            if (limit === 0 || offset === 0) {
+                setSongs(songs);
+                setLoadedSongsData({offset: offset + limit, limit});
+            } else {
                 setSongs(prevSongs => {
-                    const newSongs = [...(prevSongs || []), song];
-                    return newSongs;
+                    if (!prevSongs) return songs;
+                    const existingSongIds = prevSongs.map(song => song.id);
+                    const newSongs = songs.filter(song => !existingSongIds.includes(song.id));
+                    return [...prevSongs, ...newSongs];
+                
                 });
-                if (index !== songs.length - 1) {
-                    index += 1;
-                    setTimeout(() => {
-                        addSong(songs[index], index);
-                    }, 50);
-                } else return;
-            };
-            addSong(songs[0], 0);
+
+                if (total - (offset + limit) <= limit) setLoadedSongsData({offset: offset + limit, limit: total - (offset + limit)});
+                else setLoadedSongsData({offset: offset + limit, limit});
+            }
         });
-        socket.on('playlists', (playlists: Playlist[]) => {
-            console.log("Received playlists:", playlists);
-            const addPlaylist = (playlist: Playlist, index: number) => {
-                setPlaylists(prevPlaylists => {
-                    const newPlaylists = [...(prevPlaylists || []), playlist];
-                    console.log("New playlists array:", newPlaylists);
-                    return newPlaylists;
-                });
-                if (index !== playlists.length - 1) {
-                    index += 1;
-                    setTimeout(() => {
-                        addPlaylist(playlists[index], index);
-                    }, 50);
-                } else return;
-            };
-           
-        });
+        socket.on('playlists', (playlists: Playlist[]) => setPlaylists(playlists));
 
         // freezes right after joining a room, eventually unfreezes.
         socket.on('status', (state: string) => {
@@ -423,6 +416,14 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 const room = roomsRef.current.find(room => room.id === state.substring(12,state.length));
                 console.log("Joined room:", room);
                 joinRoom(room!);
+                if ('mediaSession' in navigator) {
+                    console.log("MediaSession API is supported, setting metadata");
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: "VaultTune Player",
+                        artist: "VaultTune",
+                        album: "VaultTune",
+                    });
+                }
             }
 
             else if (state === 'Song successfully uploaded') {
@@ -568,6 +569,18 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 
             }
 
+            audioRef.current?.addEventListener('progress', () => {
+                if (audioRef.current && audioRef.current.buffered.length > 0) {
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.setPositionState({
+                            duration: audioRef.current.duration,
+                            playbackRate: audioRef.current.playbackRate,
+                            position: audioRef.current.currentTime,
+                        });
+                    }
+                }
+            });
+
             return () => {
                 if (audioRef.current) {
                     audioRef.current.removeEventListener('seeked', seeked);
@@ -610,7 +623,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     setNextUp(null);
                     setInitiator(null);
                     setNonPendingSong(null);
-                    setError(undefined);
+                    
+                    
                     
                 }}>Leave room</button>
             <button onClick={() => {
@@ -662,7 +676,11 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             }
 
             {uploadDialog ? (
-                <Overlay>
+                <SideOverlay isOpen={uploadDialog} onClose={() => {
+                    enableUploadDialog(false);
+                    setUploadState(UploadStates.NO_UPLOAD);
+                    setFileSelected(false);
+                }}>
                     {uploadState === UploadStates.NO_UPLOAD ? (
                         <div>
                         <h1>Upload a song</h1>
@@ -670,6 +688,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         className='file-upload' 
                         ref={inputRef} 
                         type='file'
+                        accept='audio/mpeg, audio/wav, audio/ogg, audio/flac, audio/aac'
                         onChange={(e) => setFileSelected(e.target.files !== null && e.target.files.length > 0)}
                         onClick={(e) => e.stopPropagation()}
                         ></input>
@@ -705,7 +724,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         </Overlay>
                     )}
                     
-                </Overlay>
+                </SideOverlay>
             ) : null}
 
             { playlistView ? (
@@ -713,7 +732,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     <div className='currently-playing playlist-view' style={{padding: "3%", marginTop: "5%"}}>
                         
                         <img className="playlist-album-cover" 
-                            src={new Blob([new Uint8Array(playlistView.album_cover.data)], { type: playlistView.album_cover.format }) ? URL.createObjectURL(new Blob([new Uint8Array(playlistView.album_cover.data)], { type: playlistView.album_cover.format })) : undefined}
+                            src={playlistView.album_cover ? URL.createObjectURL(new Blob([new Uint8Array(playlistView.album_cover.data)], { type: playlistView.album_cover.format })) : undefined}
                             alt={`${playlistView.name} album cover`}
                         />
                         <h1>{playlistView.name}</h1>
@@ -722,28 +741,28 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                         </div>
                         <div className='player-card playlist-view'>
                             {playlistView.songs.map((song) => {
-                    const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
-                    const picture = song.metadata.common.picture;
-                    // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
-                    const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
-                    return (
-                        <div className='player-list-item' key={song.id} onClick={() => {
-                            setPlaylistView(null); // close playlist view when a song is played
-                            playlist(playlistView!, song);
-                            
-                        }}>
-                            {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
-                            <p className='song-title'>{song.metadata.common.title}</p>
-                            <p className='song-artist'>{song.metadata.common.artist}</p>
-                            <p className='song-duration'>{song_duration}</p>
+                                const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
+                                const picture = song.metadata.common.picture;
+                                // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
+                                const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
+                                return (
+                                    <div className='player-list-item' key={song.id} onClick={() => {
+                                        setPlaylistView(null); // close playlist view when a song is played
+                                        playlist(playlistView!, song);
+                                        
+                                    }}>
+                                        {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
+                                        <p className='song-title'>{song.metadata.common.title}</p>
+                                        <p className='song-artist'>{song.metadata.common.artist}</p>
+                                        <p className='song-duration'>{song_duration}</p>
 
-                        </div>
-                    );
-                })}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 
-            </SideOverlay>
+                </SideOverlay>
             ) : null}
             { createPlaylistView ? (
                 <>
@@ -792,13 +811,14 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                                                     return;
                                                 }
                                                 setLoadingDialog("Creating playlist...");
-                                                socket.emit('create playlist', room!.id, playlistName, [...selectedSongs.map(song => song.id)]);
                                                 socket.once('playlists', () => {
                                                     setLoadingDialog(null);
                                                     setCreatePlaylistView(false);
                                                     setSelectedSongs([]);
                                                     setPlaylistName("");
                                                 });
+                                                socket.emit('create playlist', room!.id, playlistName, [...selectedSongs.map(song => song.id)]);
+                                                
                                                 
                                             }}>Create</button>
                                         </div>
@@ -862,32 +882,45 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     <button onClick={() => setSelector("PLAYLISTS")}>Playlists</button>
                 </div>
                 {selector == "SONGS" && songs ? 
-                    songs.length < 1 ? <p>No songs found</p> : songs.map((song) => {
-                        const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
-                        const picture = song.metadata.common.picture;
-                        // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
-                       
-                        const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
-                        return (
-                            <div className={`player-list-item ${nonPendingSong && nonPendingSong .id === song.id ? 'clicked' : ''}`} key={song.id} onClick={() => {
-                                playSong(song);
-                                
-                                setPlaylistView(null); // close playlist view when a song is played
-                                if (currentPlaylist) {
-                                    setCurrentPlaylist(null); // reset current playlist when a song is played
-                                }
-                                if (nextUp) {
-                                    setNextUp(null); // reset next up when a song is played
-                                }
-                                }}>
-                                {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
-                                <p className='song-title'>{song.metadata.common.title}</p>
-                                <p className='song-artist'>{song.metadata.common.artist}</p>
-                                <p className='song-duration'>{song_duration}</p>
+                    songs.length < 1 ? <p>No songs found</p> : (
+                        <>
+                            {songs.map((song) => {
+                                const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
+                                const picture = song.metadata.common.picture;
+                                // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
+                            
+                                const album_cover_data = picture !== undefined ? URL.createObjectURL(new Blob([new Uint8Array(picture[0].data)], { type: picture[0].format })) : undefined;
+                                return (
+                                    <div className={`player-list-item ${nonPendingSong && nonPendingSong .id === song.id || pendingSong && pendingSong.id !== currentlyPlaying?.id && pendingSong.id === song.id ? 'clicked' : ''}`} key={song.id} onClick={() => {
+                                        playSong(song);
+                                        
+                                        setPlaylistView(null); // close playlist view when a song is played
+                                        if (currentPlaylist) {
+                                            setCurrentPlaylist(null); // reset current playlist when a song is played
+                                        }
+                                        if (nextUp) {
+                                            setNextUp(null); // reset next up when a song is played
+                                        }
+                                        }}>
+                                        {picture ? (<img className='album-cover' src={album_cover_data}></img>) : null}
+                                        <p className='song-title'>{song.metadata.common.title}</p>
+                                        <p className='song-artist'>{song.metadata.common.artist}</p>
+                                        <p className='song-duration'>{song_duration}</p>
 
-                            </div>
-                        );
-                    }) : playlists.length < 1 ? <p>No playlists found</p> : playlists.map((playlist) => {
+                                    </div>
+                                );
+                            })}
+                           { loadedSongsData && (loadedSongsData.limit !== 0) ? (
+                            <button className='load-more' onClick={() => {
+                                const offset = loadedSongsData.offset;
+                                const limit = loadedSongsData.limit;
+                                console.log(`Loading more songs with offset ${offset} and limit ${limit}`);
+                                setLoadedSongsData({offset, limit: 0});
+                                socket.emit('get songs', room!.id, offset, limit);
+                            }}>Load {loadedSongsData.limit} more</button>
+                           ) : null}
+                        </>
+                    ) : playlists.length < 1 ? <p>No playlists found</p> : playlists.map((playlist) => {
                         const picture = playlist.album_cover;
                         // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.
                         

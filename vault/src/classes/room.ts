@@ -2,7 +2,7 @@ import { Socket } from "socket.io";
 import Song from "./song";
 import Playlist from "./playlist";
 import { readdirSync, writeFileSync } from "fs";
-import { SongStatus, User } from "../interfaces/types";
+import { ConnectedUser, SongStatus, User } from "../interfaces/types";
 import {watch} from 'chokidar'
 import { basename } from "path";
 import { SongError } from "../interfaces/errors";
@@ -10,7 +10,7 @@ import { SongError } from "../interfaces/errors";
 export default class Room {
     public id: string;
     public name: string;
-    public members: User[];
+    public members: ConnectedUser[];
     public songs: Song[] = [];
     public playlists: Playlist[] = [];
     public dirs: string[] = [];
@@ -27,11 +27,11 @@ export default class Room {
         const random = Math.floor(Math.random() * 1000000);
         this.id = (id === undefined) ? `room_${timestamp}_${random}` : id;
     }
-    addMember(user: User): void {
+    addMember(user: ConnectedUser): void {
         user.join(this.id);
         this.members.push(user);
     }
-    removeMember(user: User) {
+    removeMember(user: ConnectedUser) {
         console.log(`Removing member with id: ${user.id} from room ${this.name}`);
         this.members = this.members.filter(member => member.id !== user.id);
     }

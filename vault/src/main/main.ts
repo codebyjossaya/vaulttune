@@ -12,6 +12,7 @@ import keytar from 'keytar'
 import { User } from "../react/types/types";
 import { PendingRequest } from "../react/types/types";
 import { homedir } from 'os';
+import isDev from "electron-is-dev"
 
 const handleSquirrelEvent = () => {
     const squirrelCommand = process.argv[1];
@@ -75,7 +76,7 @@ const start = async () => {
         },
         autoHideMenuBar: true
     });
-    win.loadFile(path.join(__dirname, '../../dist/index.html'));
+    isDev ? win.loadURL('http://localhost:5173') : win.loadFile(path.join(__dirname, '../index.html'));
     
     server.notify = (message: string, type: "success" | "error" | "warning") => {
         win.webContents.send('notification', message, type);
@@ -167,6 +168,7 @@ const start = async () => {
     ipcMain.handle('stop-server', async () => {
         try {
             await server.stop();
+            win.webContents.send('notification', 'Server stopped successfully', 'success');
             return true;
         } catch (error) {
             console.error("Error stopping server:", error);
