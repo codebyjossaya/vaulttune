@@ -76,7 +76,7 @@ const start = async () => {
         },
         autoHideMenuBar: true
     });
-    isDev ? win.loadURL('http://localhost:5173') : win.loadFile(path.join(__dirname, '../index.html'));
+    isDev ? win.loadURL('http://localhost:5173') : win.loadFile(path.join(__dirname, '../dist/index.html'));
     
     server.notify = (message: string, type: "success" | "error" | "warning") => {
         win.webContents.send('notification', message, type);

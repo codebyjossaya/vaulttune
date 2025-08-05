@@ -19,7 +19,9 @@ export function handleGetSongs(t: Server, socket: Socket, room_id: string, offse
     if (offset + limit > songs.length) {
         limit = songs.length - offset; // Adjust limit if it exceeds the number of available songs
     }
-    socket.emit("songs", songs.length, offset, limit, songs.slice(offset, offset + limit));
+    socket.emit("songs", songs.length, offset, limit, songs.sort((a, b) => 
+                                                        a.metadata.common.title.localeCompare(b.metadata.common.title))
+                                                        .slice(offset, offset + limit));
     console.log(`Emitted ${songs.length} songs to device ${socket.id} with offset ${offset} and limit ${limit}`);
     socket.emit("playlists",room.playlists);
 }

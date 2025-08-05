@@ -390,15 +390,15 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         socket.on('songs', (total: number, offset: number, limit: number, songs: Song[]) => {
             console.log(`Received ${songs.length} with offset ${offset} and limit ${limit}`);
             if (limit === 0 || offset === 0) {
-                setSongs(songs);
+                setSongs(songs.sort((a, b) => a.metadata.common.title.localeCompare(b.metadata.common.title)));
                 setLoadedSongsData({offset: offset + limit, limit});
             } else {
                 setSongs(prevSongs => {
                     if (!prevSongs) return songs;
                     const existingSongIds = prevSongs.map(song => song.id);
                     const newSongs = songs.filter(song => !existingSongIds.includes(song.id));
-                    return [...prevSongs, ...newSongs];
-                
+                    return [...prevSongs, ...newSongs].sort((a, b) => a.metadata.common.title.localeCompare(b.metadata.common.title));
+
                 });
 
                 if (total - (offset + limit) <= limit) setLoadedSongsData({offset: offset + limit, limit: total - (offset + limit)});
