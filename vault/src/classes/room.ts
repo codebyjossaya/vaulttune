@@ -28,6 +28,10 @@ export default class Room {
         this.id = (id === undefined) ? `room_${timestamp}_${random}` : id;
     }
     addMember(user: ConnectedUser): void {
+        if (this.members.find(member => member.id === user.id)) {
+            console.log(`User with id: ${user.id} is already a member of room ${this.name}`);
+            return;
+        }
         user.join(this.id);
         this.members.push(user);
     }
@@ -64,9 +68,17 @@ export default class Room {
                         return;
                     }
                     console.log(`Adding song ${song_name} to the room`);
-                    this.songs.push(await Song.create(SongStatus.SYSTEM, null, {path: filePath}));
+                    const song = await Song.create(SongStatus.SYSTEM, null, {path: filePath});
+                    if (!song) {
+                        console.error(`Song ${song_name} not found in the room. Skipping.`);
+                        return;
+                    }
+                    for (const member of this.members) {
+                        console.log(`Emitting new song to member ${member.data.firebase ? member.data.firebase.email : member.id}`);
+                        member.emit("new song", song.exportSong());
+                    }
+                    this.songs.push(song);
                 } catch (error) {
-                    console.log(error instanceof SongError);
                     if (error instanceof SongError) {
                         console.error(`Error adding song ${song_name}: ${error.message}`);
                         return;
@@ -75,18 +87,19 @@ export default class Room {
                 }
                 
                 
-                for (const member of this.members) {
-                    member.emit("songs", this.exportSongs())
-                }
-            }) 
+            })
             watcher.on('unlink', (path) => {
                 console.log(`${path} was removed`);
-                this.songs = this.songs.filter(song => song.path !== path);
-                for (const member of this.members) {
-                    member.emit("songs", this.exportSongs())
+                const song = this.songs.find(song => song.path === path);
+                if (!song) {
+                    console.log(`Song ${basename(path)} not found in the room. Skipping.`);
+                    return;
                 }
-                
-            }) 
+                for (const member of this.members) {
+                    member.emit("song removed", song.exportSong());
+                }
+                this.songs = this.songs.filter(song => song.path !== path);
+            });
             return {success: true, error: undefined};
         } catch (error: any) {
             return {success: false, error: error.message};

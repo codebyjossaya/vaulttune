@@ -390,7 +390,11 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         socket.on('songs', (total: number, offset: number, limit: number, songs: Song[]) => {
             console.log(`Received ${songs.length} with offset ${offset} and limit ${limit}`);
             if (limit === 0 || offset === 0) {
-                setSongs(songs.sort((a, b) => a.metadata.common.title.localeCompare(b.metadata.common.title)));
+                setSongs(songs.sort((a, b) => {
+                    if (a.metadata.common.title && b.metadata.common.title) {
+                        return a.metadata.common.title.localeCompare(b.metadata.common.title);
+                    } else return 0;
+                }));
                 setLoadedSongsData({offset: offset + limit, limit});
             } else {
                 setSongs(prevSongs => {
@@ -404,6 +408,16 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 if (total - (offset + limit) <= limit) setLoadedSongsData({offset: offset + limit, limit: total - (offset + limit)});
                 else setLoadedSongsData({offset: offset + limit, limit});
             }
+        });
+        socket.on('new song', (song: Song) => {
+            console.log("New song received:", song);
+            setSongs(prevSongs => [...prevSongs!, song].sort((a, b) => a.metadata.common.title.localeCompare(b.metadata.common.title)));
+        });
+        socket.on('song removed', (song: Song) => {
+            console.log("Song removed:", song);
+            setSongs(prevSongs => prevSongs!.filter(s => s.id !== song.id)
+                                            .sort((a, b) => a.metadata.common.title.localeCompare(b.metadata.common.title)));
+
         });
         socket.on('playlists', (playlists: Playlist[]) => setPlaylists(playlists));
 
@@ -595,17 +609,24 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         }, [currentlyPlaying, room?.id, socket]);
 
         useEffect(() => {
-            if(currentlyPlaying) {
-                console.log(`calc(${window.innerHeight}px - ${playingRef.current!.getBoundingClientRect().height + headerRef.current!.getBoundingClientRect().height}px - ${window.getComputedStyle(playingRef.current!).marginBottom})`)
-                playerRef.current!.style.height = `calc(${document.documentElement.clientHeight}px - ${playingRef.current!.getBoundingClientRect().height + headerRef.current!.getBoundingClientRect().height}px - ${window.getComputedStyle(playingRef.current!).marginBottom})`
-            } else {
-                if(playerRef.current) {
-                    playerRef.current!.style.height = ``;
+            function updatePlayerHeight() {
+                if (currentlyPlaying && playingRef.current && playerRef.current) {
+                    playerRef.current.style.height = `calc(${document.documentElement.clientHeight}px - ${playingRef.current.getBoundingClientRect().bottom}px)`;
+                    
+                } else if (playerRef.current) {
+                    playerRef.current.style.height = '';
                 }
-                
             }
-            
-        },[currentlyPlaying])
+
+            updatePlayerHeight();
+
+            window.addEventListener('resize', updatePlayerHeight);
+
+            return () => {
+                window.removeEventListener('resize', updatePlayerHeight);
+            };
+            // Only re-run when currentlyPlaying changes
+        }, [currentlyPlaying]);
 
     // handles appending buffers and detect when end of song is reached
     
@@ -640,6 +661,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         </>
     )
     const player = (
+        <>
+        
         
         <div id="container" onKeyDown={(e) => {
             if (e.key === "Escape") {
@@ -657,7 +680,10 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 setPlayState(!playing);
             }
         }}>
-            
+            <Header ref={headerRef}>
+            <p><strong>Room {room?.name}</strong></p>
+                {headerButtons}
+            </Header>
             {error ?  (
                 <Overlay>
                     <h1>There was an error</h1>
@@ -829,10 +855,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     </SideOverlay>
                 </>
             ) : null}
-            <Header ref={headerRef}>
-            <p><strong>Room {room?.name}</strong></p>
-                {headerButtons}
-            </Header>
+            
             <div className='currently-playing' ref={playingRef}>
                 {currentlyPlaying ? (
                     <>
@@ -936,6 +959,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 
             </div>
         </div>
+        </>
     );
 
     return room !== null ? ( songs && songs.length > 0 ? player : <Loading text='Getting songs...'  />) : roomsRef.current.length == 0 ? <Loading text="Getting rooms.." /> : (

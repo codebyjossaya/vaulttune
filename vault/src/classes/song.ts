@@ -45,7 +45,7 @@ export default class Song {
                     options.id
                 );
             } catch (error) {
-                throw new SongError(`Cannot read song: ${(error instanceof Error) ? error.message : String(error)}`)
+                throw new SongError(`Cannot read song: ${(error instanceof Error) ? error : String(error)}`)
             }
             
             

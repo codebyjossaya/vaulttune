@@ -6,8 +6,10 @@ import { Overlay } from './components/Overlay';
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider,signInWithPopup, onAuthStateChanged } from 'firebase/auth';
+import Notification from './components/Notification';
 import type { User } from 'firebase/auth';
 import Home from './Home';
+import useDocumentTitle from './components/useDocumentTitle';
 
 const firebaseConfig = {
 
@@ -145,7 +147,20 @@ function App() {
       return ( <Auth title="Sign in to your Vault" signIn={signIn} /> );
     }
   }
-  return user ? (<Home user={user} signOut={signOut}/>) : (<Auth title="Sign in to VaultTune" signIn={signIn} />);
+  const isUnstable = window.location.href.includes("unstable.jcamille.dev");
+  useDocumentTitle(`VaultTune${isUnstable ? ' (Unstable)' : ''}`);
+  return (
+    <>
+      {isUnstable ? (
+        <Notification
+          message='You are using the unstable version of VaultTune. Please use the stable version at https://vaulttune.jcamille.dev for a better experience.'
+          type='warning'
+          duration={10000}
+        />
+      ): null}
+      {user ? (<Home user={user} signOut={signOut}/>) : (<Auth title="Sign in to VaultTune" signIn={signIn} />)}
+    </>
+  );
 }
 
 

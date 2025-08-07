@@ -23,5 +23,5 @@ export async function handleUploadSong(t: Server, socket: Socket, room_id: strin
 
     console.log("Song successfully uploaded! Song id:", song.id)
     socket.emit("status","Song successfully uploaded")
-    socket.emit("songs", room.exportSongs())
+    t.io.to(room.id).emit("new song", song.exportSong());
 }
