@@ -1,13 +1,13 @@
-import  { useEffect, useState } from 'react';
+import  { createContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Loading } from './components/Loading';
 import { Overlay } from './components/Overlay';
-import VaultTunePlayer from './components/Player';
+import VaultTunePlayer from './components/Player copy';
 import { User } from 'firebase/auth';
-import { VaultRequest, UserVaultData, userVault } from './types';
+import { VaultRequest, UserVaultData, userVault, PlayerState } from './types';
 import { SideOverlay } from './components/SideOverlay';
 
-
+export const stateContext = createContext<PlayerState>({room: undefined, currentlyPlaying: null});
 
 function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}) {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -19,6 +19,9 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
   const [sideOverlay, setSideOverlay] = useState<React.ReactElement | null>(null);
   const [receivedInvites, setReceivedInvites] = useState<VaultRequest[]>([]); // Adjust type as needed
   const [receivedInvitesOverlay, setReceivedInvitesOverlay] = useState<boolean>(false);
+  
+
+  const vaultsRef = useState<userVault[]>(vaults);
   // const headerRef = useRef<HTMLDivElement>(null);
   // const socketRef = useRef<Socket | undefined>(socket);
   // needs to only exist within this scope
@@ -193,6 +196,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
         setLoading("Reconnecting to vault...");
         counter += 1;
         console.log("connection error")
+        fetchVaults();
         if (counter > 5) {
 
           console.log("Killing socket connection due to repeated errors")
@@ -201,6 +205,17 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
           socket.disconnect();
           setSocket(null);
           fetchVaults();
+        } else if (counter === 2) {
+            fetchVaults().then(() => {
+              if (vaultsRef.length === 0) {
+                counter = 4;
+                return;
+              }
+              const vault = vaultsRef.find((v : userVault) => {
+
+              });
+            })
+            
         }
       });
       socket.on('connect', () => {

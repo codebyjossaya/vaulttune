@@ -54,3 +54,15 @@ export interface UserVaultData {
     requests: VaultRequest[];
     [vaultId: string]: userVault;
 }
+
+export interface PlayerState {
+    room: Room | undefined;
+    currentlyPlaying: Song | null;
+    currentTime?: number;
+    songs?: Song[];
+    playlists?: Playlist[];
+
+    currentPlaylist?: Playlist;
+    currentSongIndex?: number;
+
+}

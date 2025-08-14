@@ -45,6 +45,8 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
     const [nonPendingSong, setNonPendingSong] = useState<Song | null>(null);
     const [loadedSongsData, setLoadedSongsData] = useState<{offset: number, limit: number} | null >({offset: 0, limit: 20});
     const [loading, setLoading] = useState<string |undefined>();
+    const [isPortrait, setIsPortrait] = useState<boolean>(window.innerHeight > window.innerWidth);
+    const [search, setSearch] = useState<string>("");   
 
     const audioRef = useRef<HTMLAudioElement>(null)
     const playingRef = useRef<HTMLDivElement>(null);
@@ -137,7 +139,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         song.artist_str = "";
 
         const artists: string[] = song.metadata.common.artists;
-
+        
         if (artists.length == 1) song.artist_str = artists[0];
         else if (artists.length == 2) song.artist_str = `${artists[0]} and ${artists[1]}`;
         else song.artist_str = artists.slice(0, -1).join(', ') + ', and ' + artists[artists.length - 1];
@@ -145,44 +147,43 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             console.log("Removing currently playing song because a new song is being played");
             socket.removeListener(`song data ${currentlyPlaying.id}`, songChunkListener); // remove any previous listeners for this song
         }
+        if (currentlyPlaying) {
+            console.log("currentlyplaying is not null, resetting");
+            setCurrentlyPlaying(null);
+            socket.removeListener(`song data ${currentlyPlaying.id}`, songChunkListener); // remove any previous listeners for this song
+            await new Promise(resolve => setTimeout(resolve, 1000)); // wait for 100ms to ensure the state is reset
+            
+        }
         setCurrentlyPlaying(song);
         setInitiator(initiator)
         chunkCounterRef.current = total_chunks;
-        // ending a song that is currently loading (waiting for data)
-
-        // Wait for the new audioRef to be available before proceeding
-        
+        if (pendingSong && pendingSong.id !== song.id) {
+            setPendingSong(song);
+            console.log("Pending song set to", song);
+            
+        }
         
         // Adding song info to MediaSession
         if ('mediaSession' in navigator) {
             console.log("MediaSession API is supported, setting metadata");
             const picture = song.metadata.common.picture?.[0];
-
-            if (picture) {
-                const base64Image = `data:${picture.format};base64,${window.btoa(
-                new Uint8Array(picture.data).reduce(
-                    (data, byte) => data + String.fromCharCode(byte), ''
-                )
-                )}`;
-
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: song!.metadata.common.title || '',
                     artist: song!.metadata.common.artist || '',
                     album: song!.metadata.common.album || '',
-                    artwork: [
+                    artwork: picture ? [
                         {
-                        src: base64Image,
+                        src: URL.createObjectURL(new Blob([picture.data], picture.format ? { type: picture.format } : { type: 'image/jpeg' })),
                         type: picture.format, // e.g., 'image/jpeg'
                         sizes: '512x512' // or whatever the actual size is
                         }
-                    ]
+                    ] : undefined
                 });
                 
                 navigator.mediaSession.setActionHandler('nexttrack', () => {
                     audioRef.current!.currentTime = audioRef.current!.duration;
                     console.log("Next track action handler called, skipping to end of song");
                 });
-            }
         }
 
         // prepare the audio element for playback
@@ -192,6 +193,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         sourceRef.current = new MediaSource();
         const source = sourceRef.current;
         audioRef.current!.src = URL.createObjectURL(source);
+        audioRef.current!.volume = 0.4; // set default volume
         
 
         // need to investigate first time playing issue HERE.
@@ -227,7 +229,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             };
     
             console.log("Listening for song data chunks");
-            socket.removeListener(`song data ${song.id}`, songChunkListener); // remove any previous listeners for this song
+            
             socket.on(`song data ${song.id}`, songChunkListener);
             // this event is sent in a non timely manner
             console.log("Waiting for song data end event");
@@ -648,27 +650,41 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 socket.removeAllListeners(`song seeked`);
                 socket.removeAllListeners(`song pause`);
                 socket.removeAllListeners(`song play`);
+                socket.removeAllListeners(`song paused`);
+                socket.removeAllListeners(`song played`);
             }
 
         }, [currentlyPlaying, room?.id, socket]);
-
-        useEffect(() => {
-            function updatePlayerHeight() {
-                if (currentlyPlaying && playingRef.current && playerRef.current) {
+        
+         function updatePlayerHeight() {
+            setIsPortrait(screen.orientation && (screen.orientation.type === 'portrait-primary' || screen.orientation.type === 'portrait-secondary') || window.innerHeight > window.innerWidth);
+            if (currentlyPlaying && playingRef.current && playerRef.current) {
+                if (isPortrait) {
+                    playerRef.current.style.width = headerRef.current?.getBoundingClientRect().width + "px";
                     playerRef.current.style.height = `calc(${document.documentElement.clientHeight}px - ${playingRef.current.getBoundingClientRect().bottom}px - ${window.getComputedStyle(playingRef.current).marginBottom})`;
-                } else if (playerRef.current) {
-                    playerRef.current.style.height = '';
+                } else {
+                    console.log(`calc(${document.documentElement.clientWidth}px - ${playingRef.current.getBoundingClientRect().width}px - 0 - 50px)`)
+                    playerRef.current.style.width = `calc(${document.documentElement.clientWidth}px - ${playingRef.current.getBoundingClientRect().width}px - ${window.getComputedStyle(playingRef.current).marginLeft} - 50px)`;
+                }
+            } else if (playerRef.current) {
+                if (isPortrait) playerRef.current.style.height = '';
+                else {
+                    playerRef.current.style.width = headerRef.current?.getBoundingClientRect().width + "px";
                 }
             }
-
-            updatePlayerHeight();
-
+        }
+        useEffect(() => {
+            
             window.addEventListener('resize', updatePlayerHeight);
 
             return () => {
                 window.removeEventListener('resize', updatePlayerHeight);
             };
             // Only re-run when currentlyPlaying changes
+        });
+
+        useEffect(() => {
+            updatePlayerHeight();
         }, [currentlyPlaying]);
 
     // handles appending buffers and detect when end of song is reached
@@ -898,19 +914,19 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                     </SideOverlay>
                 </>
             ) : null}
-            
-            <div className='currently-playing' ref={playingRef}>
+
+            <div className={`currently-playing ${isPortrait ? 'portrait' : 'landscape'}`} ref={playingRef}>
                 {currentlyPlaying ? (
                     <>
-                        { initiator && initiator.id !== socket.id ? (
-                            <p className='initiator'>{initiator.name} is playing</p>
-                        ) : null}
+                        
                         <div>
                             <div className='top-group'>
-                            
+                            { initiator && initiator.id !== socket.id ? (
+                            <p className='initiator'>{initiator.name} is playing</p>
+                        ) : null}
                             {currentlyPlaying.metadata.common.picture ? (
                                     <img 
-                                        className="album-cover" 
+                                        className={`album-cover ${isPortrait ? 'portrait' : 'landscape'}`}
                                         src={new Blob([new Uint8Array(currentlyPlaying.metadata.common.picture[0].data)], { type: currentlyPlaying.metadata.common.picture[0].format }) ? URL.createObjectURL(new Blob([new Uint8Array(currentlyPlaying.metadata.common.picture[0].data)], { type: currentlyPlaying.metadata.common.picture[0].format })) : undefined}
                                         alt={`${currentlyPlaying.metadata.common.title} album cover`}
                                     />
@@ -942,15 +958,26 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                 ): null}
             
             </div>  
-            <div className='player-card' ref={playerRef}>
+            <div className={`player-card ${isPortrait ? 'portrait' : 'landscape'}`} ref={playerRef}>
                 <div className='switcher'>
                     <button onClick={() => setSelector("SONGS")}>Songs</button>
                     <button onClick={() => setSelector("PLAYLISTS")}>Playlists</button>
+                </div>
+                <div className='player-list-item'>
+                    <div className='search-bar'>
+                        <input type='text' className='text_input' placeholder='Search' value={search} onChange={(e) => setSearch(e.target.value)}></input>
+                    </div>
                 </div>
                 {selector == "SONGS" && songs ? 
                     songs.length < 1 ? <p>No songs found</p> : (
                         <>
                             {songs.map((song) => {
+                                if (search.trim() !== "") {
+                                    if (song.metadata.common.title && !song.metadata.common.title.toLowerCase().includes(search.toLowerCase()) &&
+                                        song.metadata.common.artist && !song.metadata.common.artist.toLowerCase().includes(search.toLowerCase())) {
+                                        return null;
+                                    }
+                                }
                                 const song_duration = `${Math.floor(Number(song.metadata.format.duration)/60)}:${Math.floor((song.metadata.format.duration/60 - Math.floor(Number(song.metadata.format.duration)/60))*60)}`;
                                 const picture = song.metadata.common.picture;
                                 // usually picture is an array, so if picture is undefined, we simply don't access the first item in the array.

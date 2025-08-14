@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import './App.css'
+import './App copy.css'
 import { Auth } from './components/Auth';
 import { Overlay } from './components/Overlay';
 

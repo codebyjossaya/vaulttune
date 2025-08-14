@@ -108,7 +108,7 @@ export default class Server {
         this.io.on('connection', (socket: ConnectedUser) => {
             console.log(`Device ${socket.id} has connected to the server`)
             this.notify(`${socket.data.firebase.displayName} has connected to the server (${socket.id})`, "success");
-            socket.emit("status","Connection recieved");
+            socket.emit("status","Connection received");
             socket.on('get rooms', () => {
                 console.log(`Device ${socket.id} requested available rooms`);
                 socket.emit("available rooms",this.getRooms());
