@@ -27,7 +27,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
   // needs to only exist within this scope
   async function fetchVaults() {
     setLoading("Getting vaults...");
-    fetch("https://api.vaulttune.jcamille.dev/vaulttune/user/vaults/get", {
+    fetch("https://api.jcamille.dev/vaulttune/user/vaults/get", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -69,7 +69,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
       return;
     }
     const token = await user!.getIdToken();
-    fetch(`https://api.vaulttune.jcamille.dev/vaulttune/user/vault/connect`, {
+    fetch(`https://api.jcamille.dev/vaulttune/user/vault/connect`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -122,7 +122,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
             const token = await user!.getIdToken();
             setSideOverlay(null);
             setLoading("Unregistering vault...");
-            fetch(`https://api.vaulttune.jcamille.dev/vaulttune/user/vault/unregister`, {
+            fetch(`https://api.jcamille.dev/vaulttune/user/vault/unregister`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -163,7 +163,7 @@ function Home({user, signOut}: {user: User | null, signOut: () => Promise<void>}
     }
     setReceivedInvitesOverlay(false);
     setLoading(`Handling invite: ${action}ing...`);
-    fetch(`https://api.vaulttune.jcamille.dev/vaulttune/user/vault/handleRequest`, {
+    fetch(`https://api.jcamille.dev/vaulttune/user/vault/handleRequest`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -137,7 +137,7 @@ const start = async () => {
     ipcMain.handle('set-server-settings', async (event, settings) => {
         try {
             console.log("Setting server settings..");
-            await server.setOptions({...settings, api: server.options.api || 'https://api.vaulttune.jcamille.dev', token: settings.token || null});
+            await server.setOptions({...settings, api: server.options.api || 'https://api.jcamille.dev', token: settings.token || null});
             console.log(path.join(__dirname, '../config.json'))
             await server.export();
             console.log("Server settings updated:", server.options);

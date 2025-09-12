@@ -115,10 +115,11 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
 
         const chunkCounter = chunkCounterRef.current;
         const buffer = bufferRef.current;
+        console.log(sourceRef.current?.clearLiveSeekableRange())
         buffer?.appendBuffer(obj.buffer);
         if (obj.chunk_counter + 1 === chunkCounter) {
             const source = sourceRef.current!
-            console.log("Ending stream")
+            console.log("Ending stream");
             buffer!.addEventListener('updateend', () => {
                 if (checkSourceBufferDuration(source.duration)) {
                     try {
@@ -255,6 +256,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         const queue = queueRef.current;
         // Immediately append if buffer is ready, otherwise queue
         if (!bufferRef.current?.updating && queue.length === 0) {
+            console.log(`Appending chunk ${obj.chunk_counter} directly to buffer`);
             appendBuffer(obj);
         } else {
             queue.push(obj);

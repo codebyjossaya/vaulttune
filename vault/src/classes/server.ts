@@ -46,9 +46,9 @@ export default class Server {
     constructor(options: ServerOptions = {network: true, name: 'Untitled Vault', api: null, token: null}) {
         this.options = options;
         if (!this.options.api) {
-            this.options.api = 'https://api.vaulttune.jcamille.dev'; //
-            if (this.notify) this.notify("No API endpoint set. Using default: https://api.vaulttune.jcamille.dev", "warning");
-            console.warn("No API endpoint set. Using default: https://api.vaulttune.jcamille.dev");
+            this.options.api = 'https://api.jcamille.dev'; //
+            if (this.notify) this.notify("No API endpoint set. Using default: https://api.jcamille.dev", "warning");
+            console.warn("No API endpoint set. Using default: https://api.jcamille.dev");
         }
         this.app = express();
 

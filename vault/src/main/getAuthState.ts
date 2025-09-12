@@ -26,7 +26,7 @@ export function getAuthState(): Promise<AuthState> {
         if (!server.options.api) {
             server.notify("No API endpoint set. Using default", "warning");
         }
-        const api = server.options.api || 'https://api.vaulttune.jcamille.dev';
+        const api = server.options.api || 'https://api.jcamille.dev';
         server.options.token = token;
         try {
             const response = await Promise.race([verifyToken(token, api), new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("Token verification timed out")), 60000))]);
