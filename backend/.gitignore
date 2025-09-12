@@ -10,3 +10,5 @@ vaulttunemusic_key.json
 
 private.key
 public.key
+
+.env
