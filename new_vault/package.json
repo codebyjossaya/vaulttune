@@ -1,0 +1,31 @@
+{
+  "name": "vaulttune",
+  "version": "1.0.0",
+  "description": "Your self-hosted music platform's Vault software.",
+  "homepage": "https://github.com/codebyjossaya/vaulttune#readme",
+  "bugs": {
+    "url": "https://github.com/codebyjossaya/vaulttune/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codebyjossaya/vaulttune.git"
+  },
+  "license": "MIT",
+  "author": "Jossaya Camille",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "cloudflared": "^0.7.1",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "music-metadata": "^11.10.3",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

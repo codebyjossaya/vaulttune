@@ -1,5 +1,5 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: system-ui, @, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -96,11 +96,3 @@ button.danger:hover {
 }
 
 
-.card-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}

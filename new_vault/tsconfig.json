@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "nodenext",
+    "rewriteRelativeImportExtensions": true,
+    "moduleResolution": "nodenext",
+    "declaration": true,      // generate .d.ts files
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": false,
+    "esModuleInterop": true,
+    "composite": true,
+    "skipLibCheck": true,
+  }
+}

@@ -39,12 +39,6 @@ export function Auth({ title, signIn }: AuthProps) {
                                 setError(error instanceof Error ? error.message : "An unknown error occurred");
                             }).finally(() => setLoading(false));
                         }} />
-                        <button onClick={() => window.location.href = "https://jcamille.dev"} style={{display: "flex", alignItems: "center", marginLeft: "auto", marginRight: "auto"}}>
-                            <svg viewBox="0 0 24 24" className="portal-icon" fill="none" stroke="currentColor">
-                                <path d="M15 18l-6-6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            <span>Back to jcamille.dev</span>
-                        </button>
                     </>
                 )}
                 

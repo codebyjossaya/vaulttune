@@ -659,21 +659,10 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         }, [currentlyPlaying, room?.id, socket]);
         
          function updatePlayerHeight() {
-            setIsPortrait(screen.orientation && (screen.orientation.type === 'portrait-primary' || screen.orientation.type === 'portrait-secondary') || window.innerHeight > window.innerWidth);
-            if (currentlyPlaying && playingRef.current && playerRef.current) {
-                if (isPortrait) {
-                    playerRef.current.style.width = headerRef.current?.getBoundingClientRect().width + "px";
-                    playerRef.current.style.height = `calc(${document.documentElement.clientHeight}px - ${playingRef.current.getBoundingClientRect().bottom}px - ${window.getComputedStyle(playingRef.current).marginBottom})`;
-                } else {
-                    console.log(`calc(${document.documentElement.clientWidth}px - ${playingRef.current.getBoundingClientRect().width}px - 0 - 50px)`)
-                    playerRef.current.style.width = `calc(${document.documentElement.clientWidth}px - ${playingRef.current.getBoundingClientRect().width}px - ${window.getComputedStyle(playingRef.current).marginLeft} - 50px)`;
-                }
-            } else if (playerRef.current) {
-                if (isPortrait) playerRef.current.style.height = '';
-                else {
-                    playerRef.current.style.width = headerRef.current?.getBoundingClientRect().width + "px";
-                }
-            }
+            console.log(`${document.documentElement.clientWidth}x${document.documentElement.clientHeight}`);
+            console.log("is portrait?", document.documentElement.clientWidth < document.documentElement.clientHeight)
+            setIsPortrait(document.documentElement.clientWidth < document.documentElement.clientHeight);
+            
         }
         useEffect(() => {
             
@@ -690,7 +679,24 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
         }, [currentlyPlaying]);
 
     // handles appending buffers and detect when end of song is reached
-    
+    useEffect(() => {
+        if (currentlyPlaying && playingRef.current && playerRef.current) {
+            if (isPortrait) {
+                console.log("Setting player height for portrait mode");
+                playerRef.current.style.width = "";
+                console.log(`height: calc(${document.documentElement.clientHeight}px - ${playingRef.current.getBoundingClientRect().bottom}px) `)
+                playerRef.current.style.height = `calc(${document.documentElement.clientHeight}px - ${playingRef.current.getBoundingClientRect().bottom}px)`;
+            } else {
+                console.log("Setting player width for landscape mode");
+                console.log(`height: calc(${document.documentElement.clientHeight}px - ${playingRef.current.getBoundingClientRect().bottom}px - ${window.getComputedStyle(playingRef.current).marginBottom})`);
+            }
+        } else if (playerRef.current) {
+            if (isPortrait) playerRef.current.style.height = '';
+            else {
+                playerRef.current.style.width = headerRef.current?.getBoundingClientRect().width + "px";
+            }
+        }
+    }, [isPortrait, playingRef, currentlyPlaying]);
     const headerButtons = (
         <>
             <button className='danger' onClick={() => {
@@ -941,7 +947,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
                             </div>
                             
                         </div>
-                        <audio className="audio-controls" autoPlay={true} controls={true} ref={audioRef} />
+                        
                     </div>
 
                     {/* <div className='controls'>
@@ -961,6 +967,7 @@ const VaultTunePlayer = ({ config }: { config: PlayerConfig }) => {
             
             </div>  
             <div className={`player-card ${isPortrait ? 'portrait' : 'landscape'}`} ref={playerRef}>
+                <audio className="audio-controls" autoPlay={true} controls={true} ref={audioRef} />
                 <div className='switcher'>
                     <button onClick={() => setSelector("SONGS")}>Songs</button>
                     <button onClick={() => setSelector("PLAYLISTS")}>Playlists</button>
