@@ -4,6 +4,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { AuthContext } from "./AuthContext";
 import { useRouter } from "next/navigation";
 import CreateVault from "./VaultCreation";
+import { PlusIcon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { RefreshCw } from "lucide-react";
+
 function getVaults(): Promise<userVault[]> {
     return new Promise((resolve, reject) => {
         fetch('/api/user/vault/list', {
@@ -51,7 +55,30 @@ export default function Vaults() {
             </>)}
             {!newVaultOpen && (
                 <>
-                <h2>Your vaults</h2>
+                <div className="flex flex-row gap-2">
+                    <h2>Your vaults</h2>
+                    <h1>|</h1>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button className="border-0 p-1 rounded-4xl" onClick={() => setNewVaultOpen(true)}><PlusIcon /></button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            Create a new vault
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button className="border-0 p-1 rounded-4xl" onClick={() => {
+                                setLoading(true);
+                                refreshVaults();
+                            }}><RefreshCw /></button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            Refresh vault list
+                        </TooltipContent>
+                    </Tooltip>
+                    
+                </div>
                 <div className="flex flex-row gap-x-4 overflow-x-auto">
                     {loading ? (<Spinner />) : vaults.length === 0 ? (<p>No vaults found.</p>) : vaults.map((vault) => {
                         if (vault.owner?.uid === undefined) return null;
@@ -73,17 +100,12 @@ export default function Vaults() {
                     })}
 
                 </div>
-                <div className="flex gap-4">
-                    {selectedVault && (
-                        <button className="auth transition-all duration-300 " onClick={async () => {
+                <div className="flex gap-4 mt-2 justify-center ">
+                    {selectedVault && selectedVault.status === "online" && (
+                        <button className="auth fade-in transition-all duration-300 self-center" onClick={async () => {
                                     router.push(`/app/player/connect/${selectedVault.id}`);
                                 } }>Connect</button>
                     )}
-                    <button className="auth" onClick={() => {setNewVaultOpen(true)}}>Add a new vault</button>
-                    <button onClick={() => {
-                        setLoading(true);
-                        refreshVaults();
-                    }}>Refresh</button>
                 </div>
                
                 <h2>Vaults shared with you</h2>
@@ -92,7 +114,7 @@ export default function Vaults() {
                             if (vault.owner?.uid === undefined) return null;
                             if (vault.owner?.uid === authContext.user?.uid) return null;
                             return (
-                                <div key={vault.id} className={`border border-white rounded-lg p-2 my-2 transition flex flex-row justify-between gap-2 hover:cursor-pointer ${selectedVault?.id === vault.id ? "bg-gray-700" : ""}`} onClick={() => {
+                                <div key={vault.id} className={`border border-white rounded-lg p-2 my-2 transition flex flex-row justify-between gap-2 hover:cursor-pointer`} onClick={() => {
                                     if (selectedVault?.id === vault.id) {
                                         setSelectedVault(null);
                                         return;
@@ -104,9 +126,9 @@ export default function Vaults() {
                                         <p>Status: {vault.status}</p>
                                     </div>
 
-                                    <button className="auth" onClick={async () => {
+                                    {vault?.status === "online" && <button className="auth" onClick={async () => {
                                        router.push(`/app/player/connect/${selectedVault?.id}`);
-                                    } }>Connect</button>
+                                    } }>Connect</button>}
 
                                 </div>
                             );

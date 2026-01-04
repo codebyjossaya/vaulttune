@@ -2,9 +2,10 @@ import Server from "../../classes/server.ts";
 import Song from "../../classes/song.ts";
 import { ConnectedUser } from "../../../types/server_types.ts";
 
-export default function handleSongDataReady(server: Server, socket: ConnectedUser, user_song: Song) {
-    const song = server.data.songs.find(s => s.id === user_song.id)!;
-    if (!server.data.songs.find(s => s.path === song.path)) {
+export default function handleSongDataReady(server: Server, socket: ConnectedUser, user_song: Song, iOSMode: boolean = false) {
+    try {
+        const song = server.database.getSong(user_song.id);
+    if (!song) {
         server.logger.warn(`Song ${song.path} not found in server data.`);
         socket.emit("error", `Song not found in server.`);
         return;
@@ -16,13 +17,17 @@ export default function handleSongDataReady(server: Server, socket: ConnectedUse
             console.error(`Song with ID ${song.id} is not available for playback`);
             return;
         }
-        let chunkSize = (buf.byteLength / song.metadata.format.duration!) * 0.5;
+        let chunkSize = (buf.byteLength / song.duration) * 0.5;
         const total_chunks = Math.ceil(buf.byteLength / chunkSize);
         let offset = 0;
         let chunk_counter = 0;
         server.logger.info(`Device ${socket.id} is ready to receive song data for ${song.id}`);
 
         const sendChunk = () => {
+            if (song.path.includes(".m4a") || iOSMode) {
+                server.logger.info("iOS device or m4a file detected, adjusting chunk size for m4a playback");
+                chunkSize = buf.byteLength; // minimum chunk size for m4a files to avoid playback issues
+            }
             if (offset < buf.byteLength) {
                 const remainingSize = buf.byteLength - offset;
                 if (remainingSize < chunkSize) chunkSize = remainingSize
@@ -34,10 +39,15 @@ export default function handleSongDataReady(server: Server, socket: ConnectedUse
                 server.stoppers.set(`${socket.id}-${song.id}`, setTimeout(sendChunk, 10)); // Use setTimeout to avoid blocking the event loop
             } else {
                 console.log("Finished sending song data");
-                socket.emit("song data end");
+                socket.emit("song data end", song.id);
             }
         };
 
         sendChunk();
     });
+    } catch (error) {
+       server.logger.error(`Error in handleSongDataReady: ${error}`);
+        socket.emit("error", "An error occurred while preparing song data."); 
+    }
+    
 }

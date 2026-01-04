@@ -1,7 +1,8 @@
-import type { serverToken, User } from "../types/backend.d.ts";
+import type { serverToken } from "../types/backend.d.ts";
+import { User } from "../types/server_types.ts";
 export default function auth(token: string, backend: string): Promise<serverToken> {
     return new Promise((resolve, reject) => {
-        fetch(`${backend}/vaulttune/auth/vault/verifyToken`, {
+        fetch(`${backend}/api/auth/vault/verifyToken`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -16,9 +17,11 @@ export default function auth(token: string, backend: string): Promise<serverToke
             else return response.json();
         }).then((data: {
             status: string,
-            vault: serverToken
+            id: string,
+            user: User,
         }) => {
-            resolve(data.vault)
+            console.log("Auth response data: ", data);
+            resolve({id: data.id, user: data.user});
         }).catch(async (error: Error) => {
             reject(`Auth error: ${error.toString()}`);
         })

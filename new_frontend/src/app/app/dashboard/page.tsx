@@ -39,7 +39,7 @@ export default function Home() {
     const router = useRouter();
     return (
        <div className="absolute h-screen w-screen top-0 flex justify-center items-center"
-        style={{height: window.innerHeight}}
+        style={{height: window ? window.innerHeight : undefined}}
        >
             <div className="relative h-full lg:h-[54%] w-screen lg:w-[30%] flex flex-col bg-black/30 rounded-lg p-5"
                 

@@ -1,11 +1,16 @@
-import type CLIConfig from "../types/config.d.ts";
+import type VaultOptions from "../types/config.d.ts";
 
-export function registerVault(config: CLIConfig, status: "online" | "offline"): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+export function registerVault(config: VaultOptions, status: "online" | "offline"): Promise<void> {
+    const timeout = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+            reject(new Error("Request timed out while registering vault."));
+        }, 10000); // 10 seconds timeout
+    });
+    return Promise.race([timeout, new Promise<void>((resolve, reject) => {
         try {
             console.log(`Registering vault with status: ${status}`);
-            const vault_name = config.options.name;
-            fetch(`${config.backend}/vaulttune/user/vault/register`, {
+            const vault_name = config.name;
+            fetch(`${config.backend}/api/user/vault/register`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -34,5 +39,5 @@ export function registerVault(config: CLIConfig, status: "online" | "offline"): 
             reject(error);
         }
         
-    });
+    })]);
 }

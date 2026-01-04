@@ -1,15 +1,11 @@
 
 
-interface VaultOptions {
+export default interface VaultOptions {
     id?: string;
     song_dir: string;
     name: string | "Untitled Vault";
-}
-
-export default interface CLIConfig {
-    options: VaultOptions;
-    token: string;
     backend: string | undefined = 'https://vaulttune.jcamille.dev';
+    token: string;
     address: string;
-    port: string;
+    port: number;
 }

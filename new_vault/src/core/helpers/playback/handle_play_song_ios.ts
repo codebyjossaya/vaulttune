@@ -8,16 +8,17 @@ import express, {Request, Response, RequestHandler} from 'express';
 
 export async function handleiOSPlaySong(t: Server, socket: Socket, room_id: string, song: Song) {
     console.log(`iOS device ${socket.id} is requesting song ${song.id} from room ${room_id}`)
-    if (!t.data.songs.find(s => s.id == song.id)) {
-        socket.emit("error", "Could not find song")
+    const songData = t.database.getSong(song.id);
+    if (!songData) {
+        socket.emit("error", "Song not found in database");
         return;
     }
-    socket.emit('song data - iOS', song)
+    socket.emit('song data - iOS', songData)
  
     t.app.removeAllListeners("/")
     const disconnectHandler = () => t.app.removeAllListeners("/"); 
     console.log("Enabling HTTP server..")
-    t.app.use(`/${socket.id}/`,express.static(dirname(song.path), {
+    t.app.use(`/${socket.id}/`,express.static(dirname(songData.path), {
         setHeaders: (res: Response, filePath: string) => {
             const ext = extname(filePath);
             const mimeTypes: Record<string, string> = {

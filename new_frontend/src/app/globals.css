@@ -20,7 +20,7 @@ body {
   }
 
   a.link {
-    @apply text-gray-300 hover:text-white hover:cursor-pointer
+    @apply text-gray-300 hover:text-white hover:underline hover:cursor-pointer
   }
 
   a.button {

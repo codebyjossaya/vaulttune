@@ -1,36 +1,125 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { SocketContext } from "@/app/components/SocketContext";
 import Image from "next/image";
+import { StateContext } from "./StateProvider";
+import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
+import { EllipsisIcon } from "lucide-react";
+import { DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import ShareView from "./ShareView";
 import { Song } from "@/app/types";
-export default function Songs({searchTerm, setCurrentSong}: {searchTerm: string, setCurrentSong: (song: Song | null) => void}) {
+import DisplayMode from "@/app/components/DisplayMode";
+import EditSongView from "./EditSongView";
+import Loading from "./Loading";
+export default function Songs({searchTerm }: {searchTerm: string}) {
     const socketCtx = useContext(SocketContext);
-    return socketCtx!.data.songs.map((song, index) =>  {
-        if (searchTerm && !song.metadata.common.title!.toLowerCase().includes(searchTerm.toLowerCase()) && !song.metadata.common.artist!.toLowerCase().includes(searchTerm.toLowerCase())) {
+    const stateCtx = useContext(StateContext);
+    const [shareOverlay, setShareOverlay] = useState<Song | null>(null);
+    const [editOverlay, setEditOverlay] = useState<Song | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+    return socketCtx!.data.songs.sort((a, b) => a.title.localeCompare(b.title)).map((song, index) =>  {
+        if (searchTerm && !song.title!.toLowerCase().includes(searchTerm.toLowerCase()) && !song.artists!.some(artist => artist.toLowerCase().includes(searchTerm.toLowerCase()))) {
             return null;
         }
         return (
-            <div key={index} className="p-4 bg-gray-500/30 rounded-lg hover:bg-gray-600 hover:cursor-pointer flex justify-between" onClick={() => {
-                setCurrentSong(null);
+            <div key={index} className={`p-4 bg-gray-500/30 rounded-lg hover:bg-gray-600 hover:cursor-pointer flex justify-between ${stateCtx?.currentSong && stateCtx.currentSong.id === song.id ? "text-emerald-500" : ""}`} onClick={() => {
+                if (!stateCtx) return;  
+                if (stateCtx.currentSong && stateCtx.currentSong.id === song.id) return;
+                stateCtx?.setCurrentSong(undefined);
                 
                 setTimeout(() => {
-                    setCurrentSong(song);
-                    socketCtx!.socket.current?.emit("play song", song);
+                    stateCtx?.play(song);
+                    stateCtx?.queue.set([]);   
+                    stateCtx!.queue.index.current = null;                 
                 },100)
                 
                 
             }}>
-                <div className="flex flex-row text-center items-center gap-2">
-                {song.metadata.common.picture && song.metadata.common.picture.length > 0 ? (
-                <Image
-                        src={`data:${song.metadata.common.picture[0].format};base64,${Buffer.from(song.metadata.common.picture[0].data).toString('base64')}`}
+                { editOverlay !== null && editOverlay.id === song.id && 
+                <DisplayMode title="Edit Song" className="" setOpen={() => setEditOverlay(null)}>
+                    { loading ? <Loading message="Saving changes..." /> : 
+                    <EditSongView song={editOverlay} setSong={(updatedSong) => {
+                        setLoading(true);
+                        if (song.coverImage !== updatedSong.coverImage) {
+                            fetch(updatedSong.coverImage!).then(res => res.blob()).then((blob) => {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (updatedSong as any).coverImage = blob;
+                            }).catch((error) => {
+                                console.error("Error fetching image:", error);
+                            }).finally(() => {
+                                socketCtx?.socket?.current?.emit('edit song', updatedSong);
+                            });
+                        } else {
+                            socketCtx?.socket?.current?.emit('edit song', updatedSong);
+                        }
+                        socketCtx?.socket?.current?.once('song updated', (newSong: Song) => {
+                            socketCtx.data.setSongs(socketCtx.data.songs.map(s => s.id === newSong.id ? newSong : s));
+                            if (stateCtx && stateCtx.currentSong && stateCtx.currentSong.id === newSong.id) {
+                                stateCtx.setCurrentSong(newSong);
+                            }
+                            setLoading(false);
+                            setEditOverlay(null);
+                        });
+                    }} />}
+                </DisplayMode>
+                }
+                { shareOverlay !== null && shareOverlay.id === song.id && <ShareView song={shareOverlay} exit={() => setShareOverlay(null)} /> }
+                <div className="flex flex-row justify-between items-center w-full">
+                    <div className="flex flex-row text-center items-center gap-2">
+                    <Image
+                        src={song.coverImage ? `${socketCtx?.url.current}/photo/${song.id}?socketId=${socketCtx?.socket.current!.id}` : "/placeholder.jpg"}
                         alt="Album Art"
                         width={50}
                         height={50}
-                        className="inline-block mr-4"
+                        className="inline-block mr-4 rounded-md"
+                        unoptimized
                     />
-                ) : null}
-                <p><strong>{song.metadata.common.title}</strong></p>
-                <p>{song.metadata.common.artist}</p>
+                    <p><strong>{song.title}</strong></p>
+                    <p>{song.artists.join(", ")}</p>
+                    </div>
+                    {/* <p className="text-gray-500">{`${Math.floor(Number(song.duration)/60)}:${Math.floor((song.duration/60 - Math.floor(Number(song.duration)/60))*60)}`}</p> */}
+                    <DropdownMenu onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuTrigger className="p-2 rounded-lg hover:bg-gray-600 border-0">
+                            <EllipsisIcon />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                if (!stateCtx?.queue.index.current && stateCtx?.queue.index.current !== 0) {
+                                    stateCtx!.queue.index.current = 0;
+                                }
+                                stateCtx?.queue.songs.splice(stateCtx.queue.index.current! + 1, 0, song);
+                                stateCtx?.queue.set(stateCtx.queue.songs);
+                            }}>Add to queue</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                setShareOverlay(song);
+                            }}>Share</DropdownMenuItem>
+                            { socketCtx?.data.owner && (
+
+                                <>
+                                    <DropdownMenuItem onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditOverlay(song);
+                                    }}>Edit</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => {
+                                        e.stopPropagation();
+                                        socketCtx?.socket?.current?.emit('delete song', song);
+                                        socketCtx?.socket?.current?.once('song removed', (song: Song) => {
+                                            socketCtx.data.setSongs(socketCtx.data.songs.filter(s => s.id !== song.id));
+                                            if (stateCtx?.currentSong && stateCtx.currentSong.id === song.id) {
+                                                stateCtx.setCurrentSong(null);
+                                                stateCtx.queue.set([]);
+                                                stateCtx.queue.index.current = null;
+                                            }
+                                        });
+                                    }}>Delete</DropdownMenuItem>
+                                    
+                                </>
+                            )}
+                            
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                 </div>
                 
             </div>

@@ -10,10 +10,18 @@ export default function handleStopSong(server: Server, socket: ConnectedUser, so
         sle.users.forEach(user => {
             if (user.id === socket.id) return; // skip sender
             server.stoppers.delete(`${user.id}-${song.id}`);
-            user.emit("song data end");
+            user.emit("song data end", song.id);
         });
     }
-    socket.emit("song data end");
-    server.stoppers.delete(`${socket.id}-${song.id}`);
-    server.logger.info(`User ${socket.id} stopped song ${song.id} ${sle ? `in SLE ${sle.id}` : ""}`);
+
+    try {
+        server.stoppers.delete(`${socket.id}-${song.id}`);
+        socket.emit("song data end", song.id);
+        server.logger.info(`User ${socket.id} stopped song ${song.id} ${sle ? `in SLE ${sle.id}` : ""}`);
+    } catch (error) {
+        server.logger.error(`Error stopping song data transmission for user ${socket.id}: ${error}`);
+        socket.emit("error", "An error occurred while stopping song data transmission.");
+    }
+    
+    
 }

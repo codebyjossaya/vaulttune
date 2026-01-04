@@ -19,18 +19,22 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "fast-average-color": "^9.5.0",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.3",
+    "konva": "^10.0.12",
     "lucide-react": "^0.561.0",
     "music-metadata": "^11.10.3",
     "next": "16.0.9",
     "react": "19.2.1",
     "react-dom": "19.2.1",
+    "react-konva": "^19.2.1",
     "react-social-login-buttons": "^4.1.1",
     "react-transition-group": "^4.4.5",
     "socket.io-client": "^4.8.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

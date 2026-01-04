@@ -1,11 +1,14 @@
 'use client';
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
 import { GoogleLoginButton } from "react-social-login-buttons"
 import { auth, provider } from '@/lib/firebase/main';
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+
 
 export default function Login() {
     const router = useRouter();
+    const params = useSearchParams();
+    const redirectPath = params.get('redirect') || '/app/dashboard';
     return (
         <div className="absolute w-screen h-screen flex items-center justify-center">
             <div className="bg-gray-950/30 rounded-lg flex flex-col justify-center text-center h-96 w-96 p-20 gap-4">
@@ -19,7 +22,7 @@ export default function Login() {
                         signInWithPopup(auth, provider).then(async () => {
                             const token = await auth.currentUser?.getIdToken();
                             document.cookie = `auth_token=${token}; path=/; max-age=86400`;
-                            router.push("/app/dashboard");
+                            router.push(redirectPath);
                         }).catch((error) => {
                             console.error("Error during sign in: ", error);
                         });

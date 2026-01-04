@@ -6,14 +6,14 @@ export default function handleCreatePlaylist(server: Server, socket: ConnectedUs
     server.logger.info(`User ${socket.id} is creating a playlist named ${name} with songs: ${song_ids.join(", ")}`);
     const playlist = new Playlist(name);
     for (const song_id of song_ids) {
-        const song = server.data.songs.find(s => s.id === song_id);
+        const song = server.database.getSong(song_id);
         if (song) {
             playlist.addSong(song);
         } else {
             server.logger.warn(`Song with ID ${song_id} not found while creating playlist ${name}`);
         }
     }
-    server.data.playlists.push(playlist);
-    socket.emit("playlists", server.data.playlists);
+    server.database.addPlaylist(playlist);
+    socket.emit("playlists", server.database.getAllPlaylists());
     server.logger.info(`Playlist ${name} created successfully with ${playlist.songs.length} songs.`);
 }

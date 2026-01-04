@@ -1,10 +1,9 @@
-import { IPicture } from "music-metadata";
 import Song from "./song.ts";
 
 export default class Playlist {
-    public songs: Song[]
+    public songs: string[]
     public name: string;
-    public album_cover?: IPicture;
+    public album_cover?: string;
     public id: string;
     constructor(name: string) {
         this.name = name
@@ -14,25 +13,17 @@ export default class Playlist {
         this.id = `playlist_${timestamp}_${random}`;
         this.songs = [];
     }
-    addSong(song: Song) {
-        if(this.songs.length == 0 && song.metadata.common.picture) this.album_cover = song.metadata.common.picture[0]    
-        this.songs.push(song);
+    async addSong(song: Song) {
+        if(this.songs.length == 0 && song.coverImage) {
+            const coverBuffer = await song.getImageBuffer();
+            if (coverBuffer) {
+                this.album_cover = coverBuffer.toString('base64');
+            }
+        }
+        this.songs.push(song.id);
     }
     removeSong(song: Song) {
-        this.songs = this.songs.filter(member => member.path !== song.path)
+        this.songs = this.songs.filter(member => member !== song.id)
     }
-    getSongs() {
-        return this.songs.map(song => {
-            return {
-                id: song.id,
-                path: song.path
-            }
-        })
-    }
-    exportPlaylist() {
-        return {
-            songs: this.getSongs(),
-            name: this.name
-        }
-    }
+
 }

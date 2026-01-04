@@ -1,4 +1,3 @@
-import { IAudioMetadata, IPicture } from "music-metadata";
 
 export interface serverToken {
     id: string;
@@ -36,11 +35,17 @@ export interface UserVaultData {
 
 export interface Song {
     id: string;
-    metadata: IAudioMetadata;
+    title: string;
+    artists: string[];
+    album: string;
+    duration: number;
+    coverImage?: string;
+    mime: string;
 }
+
 export interface Playlist {
-    songs: Song[];
-    name: string;
-    album_cover?: IPicture;
     id: string;
+    name: string;
+    album_cover?: string;
+    songs: string[];
 }

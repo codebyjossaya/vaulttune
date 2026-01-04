@@ -1,6 +1,7 @@
 import { Socket } from "socket.io";
 import Song from "../core/classes/song.ts";
 import Playlist from "../core/classes/playlist.ts";
+import { IAudioMetadata } from "music-metadata";
 
 export enum SongStatus {
     UPLOADED = 'UPLOADED',
@@ -10,6 +11,7 @@ export enum SongStatus {
 export interface SongOptions {
     path?: string;
     id?: string;
+    metadata?: IAudioMetadata;
 }
 
 export interface User {
@@ -29,6 +31,7 @@ export interface PendingRequest {
     email: string;
 }
 
+
 export interface ConnectedUser extends Socket {
     data: {
         auth?: {
@@ -42,17 +45,12 @@ export interface ConnectedUser extends Socket {
 }
 
 export interface VaultData {
-    name?: string;
     songs: Song[];
     playlists: Playlist[];
     users?: User[];
     
 }
 
-export interface VaultOptions {
-    id?: string;
-    song_dir: string;
-}
 
 export interface Logger {
     info(message: string): void;

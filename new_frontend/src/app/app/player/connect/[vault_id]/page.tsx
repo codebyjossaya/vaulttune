@@ -1,10 +1,11 @@
 'use client';
 import { SocketContext } from "@/app/components/SocketContext";
-import { useContext, useState, useEffect, Usable } from "react";
+import { useContext, useState, useEffect, Usable, useRef } from "react";
 import connectVault from "@/app/app/functions/connect";
 import { Spinner } from "@/components/ui/spinner";
 import { useRouter } from "next/navigation";
 import { use } from "react";
+import { ErrorContext } from "@/app/components/ErrorContext";
 
 
 export default function Page({
@@ -14,11 +15,12 @@ export default function Page({
 }
 ) {
     const socketCtx = useContext(SocketContext);
+    const errorCtx = useContext(ErrorContext);
     const router = useRouter();
     const { vault_id } = use(params as unknown as Usable<unknown>) as { vault_id: string };
     const [connected, setConnected] = useState<boolean>(false);
     const [vaultName, setVaultName] = useState<string>("");
-    
+    const connectAttempts = useRef<number>(1);
     useEffect(() => {
         const token = document.cookie.split('auth_token=')[1]?.split(';')[0] || "";
         console.log(socketCtx);
@@ -32,13 +34,25 @@ export default function Page({
                 const socket = socketCtx.socket!.current!;
                 socket.on("connect", () => {
                     setConnected(true); 
+                    router.push('/app/player/' + vault_id);
                 });
-                socket.on("connect_error", (err) => {
-                    console.error("Connection error: ", err);
-                    
+                socket.on("connect_error", () => {
+
+                    console.error(`Failed to connect to vault. Attempt #${connectAttempts}/5 `);
+                    errorCtx.setError(`Failed to connect to vault. Attempt #${connectAttempts.current}/5 `);
+                    connectAttempts.current += 1;
+                    if (connectAttempts.current > 4) {
+                        errorCtx.setError("Failed to connect to vault after multiple attempts. Please try again later.");
+                        setTimeout(() => {
+                            router.push('/app/dashboard');
+                            errorCtx.setError(null);
+                            connectAttempts.current = 1;
+                            socketCtx.disconnect();
+                        }, 2000);
+                    }
                 });
                 socket.on("error", (err) => {
-                    console.error("Socket error: ", err);
+                    errorCtx.setError("Vault error:" + err)
                     
                 });
 
@@ -47,16 +61,11 @@ export default function Page({
         }
     }, []);
 
-    useEffect(() => {
-        if (connected) {
-            // Redirect to player page after connection
-            router.push(`/app/player/${vault_id}`);
-        }
-    }, [connected, router, vault_id]);
-
     return (
-            <div className="absolute h-screen w-screen top-0 flex justify-center items-center">
-                <div className="relative h-[30%] w-[30%] flex flex-col bg-black/30 rounded-lg p-5 justify-center">
+            <div className="absolute h-screen w-screen top-0 flex justify-center items-center"
+                style={{height: window.innerHeight}}
+            >
+                <div className="relative h-full lg:h-[30%] w-full lg:w-[30%] flex flex-col bg-black/30 rounded-lg p-5 justify-center">
                     {!connected ? (
                         <>
                             <Spinner className="place-self-center" />

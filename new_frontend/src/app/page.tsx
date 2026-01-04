@@ -5,14 +5,14 @@ export default function Home() {
 
     <div className="h-screen">
       <Header></Header>
-      <div className="flex flex-col items-center justify-center text-center w-full h-[50vh] gap-4 pt-30" style={{background: "linear-gradient(0deg, rgb(0, 0, 0), #051f11)"}}>
+      <div className="flex flex-col items-center justify-center text-center w-full h-[50vh] gap-4 pt-30">
         <h1 className="text-4xl ">Your personal self-hosted music platform</h1>
         <p className="text-xl">Stream your music anywhere, anytime, on any device.</p>
         <a className="button" href="app">Try it out</a>
       </div>
-      <div className="section bg-black p-10 px-20">
+      <div className="section bg-indigo-900 p-10 px-20">
         <h1>VaultTune provides a seamless, <span className="italic">fast</span> streaming experience on all of your devices with plenty of features.</h1>
-        <div className="grid grid-cols-3 mt-4 gap-4">
+        <div className="grid grid-rows-3 lg:grid-cols-3 mt-4 gap-4">
           <div className="bg-gray-800 bg-opacity-30 p-4 rounded-md">
             <h2>Socket.io</h2>
             <p>For fast, chunk-based streaming of songs that start playing instantly.</p>

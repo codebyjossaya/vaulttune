@@ -544,14 +544,17 @@ export function AudioPlayerSpeed({
           aria-label="Playback speed"
           {...props}
         >
-          <Settings className="size-4" />
+          <Settings className={`size-4 ${props.style?.color === 'white' ? 'text-white' : ''}`} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[120px]">
         {speeds.map((speed) => (
           <DropdownMenuItem
             key={speed}
-            onClick={() => player.setPlaybackRate(speed)}
+            onClick={(e) => {
+              e.stopPropagation();
+              player.setPlaybackRate(speed)
+            }}
             className="flex items-center justify-between"
           >
             <span className={speed === 1 ? "" : "font-mono"}>

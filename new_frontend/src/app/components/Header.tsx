@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 export default function Header() {
     return (
-        <div className={`bg-transparent ${usePathname() === '/' ? 'absolute' : 'sticky'} flex flex-row p-10 justify-center items-center`}>
+        <div className={`bg-transparent ${usePathname() === '/' ? 'absolute' : 'sticky'} flex flex-row py-10 px-4 justify-center items-center`}>
             <p className="font-bold text-2xl">VaultTune</p>
             <p className="font-bold text-2xl mx-2"> | </p>
             <div className="gap-4 flex flex-row">
