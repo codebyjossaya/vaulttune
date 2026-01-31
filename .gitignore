@@ -4,4 +4,4 @@ dist/
 
 *.db
 
-*/config.json
+new_vault/config.json

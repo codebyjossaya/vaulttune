@@ -10,7 +10,7 @@ export default function Home() {
         <p className="text-xl">Stream your music anywhere, anytime, on any device.</p>
         <a className="button" href="app">Try it out</a>
       </div>
-      <div className="section bg-indigo-900 p-10 px-20">
+      <div className="section bg-[#1e1a44] p-10 px-20">
         <h1>VaultTune provides a seamless, <span className="italic">fast</span> streaming experience on all of your devices with plenty of features.</h1>
         <div className="grid grid-rows-3 lg:grid-cols-3 mt-4 gap-4">
           <div className="bg-gray-800 bg-opacity-30 p-4 rounded-md">

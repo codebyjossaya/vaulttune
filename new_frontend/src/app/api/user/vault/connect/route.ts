@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { auth, database } from "@/lib/firebase/admin";
 export async function POST(req: NextRequest) {
     try {
-         const user_token = req.headers.get('authorization');
+        const user_token = req.headers.get('authorization');
         const { vault_id } = await req.json();
         if (!user_token || !vault_id) throw new Error("Vault ID and user token are required");
 

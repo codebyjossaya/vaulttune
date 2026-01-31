@@ -20,7 +20,7 @@ export default function DisplayMode({children, title, setOpen, buttons, classNam
                 setOpen(!open);
             }}>
                 
-                <DrawerContent className={`scrollbar bg-black px-6 min-h-[50vh] ${className ? className : ""}`} onClick={(e) => {e.stopPropagation()}}>
+                <DrawerContent className={`absolute z-100000 scrollbar bg-black px-6 min-h-[50vh] ${className ? className : ""}`} onClick={(e) => {e.stopPropagation()}}>
                     <DrawerHeader>
                         <DrawerTitle className="text-white text-3xl">{title}</DrawerTitle>
                         <div className="flex flex-row gap-4 items-center justify-center">
@@ -43,7 +43,7 @@ export default function DisplayMode({children, title, setOpen, buttons, classNam
                         <div className="w-full h-0.5 bg-amber-50/30 my-2"/>
 
                     </DrawerHeader>
-                    <div className="flex flex-col flex-1 scrollbar overflow-y-auto justify-start place-items-start">
+                    <div className="flex flex-col flex-1 scrollbar overflow-y-auto items-center place-items-start">
                         {children}
                     </div>
                     
@@ -60,7 +60,7 @@ export default function DisplayMode({children, title, setOpen, buttons, classNam
                 setOpen(!open);
             }}>
                 
-                    <DialogContent className={`${!className?.includes('h-') ? "max-h-[80vh]" : ""} border-black my-2 scrollbar bg-black p-6 rounded-xl pb-10 grid grid-rows-[auto_1fr] ${className ? className : ""} `} onClick={(e) => {e.stopPropagation()}}>
+                    <DialogContent className={`${!className?.includes('h-') ? "max-h-[80vh]" : ""} relative border-black my-2 scrollbar bg-black p-6 rounded-xl pb-10 grid grid-rows-[auto_1fr] ${className ? className : ""} `} onClick={(e) => {e.stopPropagation()}}>
                         <DialogHeader className="flex flex-row justify-between items-center mb-4">
                             <DialogTitle className="text-3xl">{title}</DialogTitle>
                             <div className="flex flex-row gap-4 items-center justify-center">

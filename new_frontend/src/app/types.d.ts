@@ -49,3 +49,11 @@ export interface Playlist {
     album_cover?: string;
     songs: string[];
 }
+
+export interface SLE { // shared listening experience
+    id: string;
+    users: Map<string, ConnectedUser>;
+    currentSong: Song | null;
+    isPlaying: boolean;
+    timestamp: number; // when the song started playing
+}

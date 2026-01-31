@@ -5,7 +5,7 @@ import connectVault from "@/app/app/functions/connect";
 import { Spinner } from "@/components/ui/spinner";
 import { useRouter } from "next/navigation";
 import { use } from "react";
-import { ErrorContext } from "@/app/components/ErrorContext";
+import { AlertContext } from "@/components/AlertProvider";
 
 
 export default function Page({
@@ -15,7 +15,7 @@ export default function Page({
 }
 ) {
     const socketCtx = useContext(SocketContext);
-    const errorCtx = useContext(ErrorContext);
+    const alertCtx = useContext(AlertContext);
     const router = useRouter();
     const { vault_id } = use(params as unknown as Usable<unknown>) as { vault_id: string };
     const [connected, setConnected] = useState<boolean>(false);
@@ -39,20 +39,19 @@ export default function Page({
                 socket.on("connect_error", () => {
 
                     console.error(`Failed to connect to vault. Attempt #${connectAttempts}/5 `);
-                    errorCtx.setError(`Failed to connect to vault. Attempt #${connectAttempts.current}/5 `);
+                    alertCtx.setAlert(`Failed to connect to vault. Attempt #${connectAttempts.current}/5 `, "error");
                     connectAttempts.current += 1;
                     if (connectAttempts.current > 4) {
-                        errorCtx.setError("Failed to connect to vault after multiple attempts. Please try again later.");
+                        alertCtx.setAlert("Failed to connect to vault after multiple attempts. Please try again later.", "error");
                         setTimeout(() => {
                             router.push('/app/dashboard');
-                            errorCtx.setError(null);
                             connectAttempts.current = 1;
                             socketCtx.disconnect();
                         }, 2000);
                     }
                 });
                 socket.on("error", (err) => {
-                    errorCtx.setError("Vault error:" + err)
+                    alertCtx.setAlert("Vault error:" + err, "error");
                     
                 });
 

@@ -5,12 +5,11 @@ VaultTune is a self-hosted music server that allows you to stream your music lib
 ## Features
 
 - **Self-hosted music streaming**: Run your own music server and access your library from anywhere.
-- **Room-based organization**: Create rooms with different music folders and manage them easily.
 - **User management**: Invite users, manage pending requests, and control access to your vault.
 - **Modern web interface**: Intuitive UI for managing your vault, rooms, and users.
 - **Cross-platform**: Works on Windows, macOS, and Linux.
-- **Secure authentication**: Uses secure token storage and authentication.
-- **Discord Rich Presence**: Integration for showing your listening status on Discord.
+- **Shared Listening Experiences**: Share a queue, 
+
 
 ## Getting Started
 You can build from source by cloning the repo and running

@@ -27,7 +27,8 @@ export const StateContext = createContext<{
 export function StateProvider({children}: {children: React.ReactNode}) {
     const [songs, setSongs] = useState<Song[]>([]);
     const [currentSong, setCS] = useState<Song | undefined | null>(null);
-    const [loading, setL] = useState<boolean>(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_, setL] = useState<boolean>(false);
     const persistedStateRef = useRef<boolean>(false);
     const currentSongRef = useRef<Song | undefined | null>(null);
     const setCurrentSong = (song: Song | undefined | null) => {
@@ -89,6 +90,7 @@ export function StateProvider({children}: {children: React.ReactNode}) {
             }
         });
    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socketCtx?.socket.current]);
     useEffect(() => {
         if (!currentSong) return;
@@ -102,12 +104,12 @@ export function StateProvider({children}: {children: React.ReactNode}) {
                 currentTime: currentTimeRef.current,
                 duration: durationRef.current,
             };
-            console.log("Persisting player state: ", state);
+            const delay = isPlayingRef.current ? 1000 : 5000;
             timeoutId = setTimeout(() => {
                 if (!persistedStateRef.current)
                 localStorage.setItem(vault_idRef.current ?? "playerState", JSON.stringify(state));
                 saveState();
-            }, 5000);
+            }, delay);
         }    
         saveState();
 
@@ -147,7 +149,6 @@ export function StateProvider({children}: {children: React.ReactNode}) {
             console.log("Clearing current song to force re-play");
             setCurrentSong(undefined);
         }
-        console.log("see u in 100ms")
         setTimeout(() => {
             console.log(pendingSongRef.current);
             setCurrentSong(pendingSongRef.current);
@@ -197,7 +198,10 @@ export function StateProvider({children}: {children: React.ReactNode}) {
                     const nextSong =  songs[nextIndex]
                     play(nextSong);
                 },
-                set: setSongs,
+                set: (q: Song[]) => {
+                    const queue = q.filter(s => s !== undefined && s.id !== undefined);
+                    setSongs(queue);
+                },
             },
             currentSong,
             setCurrentSong,

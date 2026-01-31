@@ -26,7 +26,7 @@ export async function generateMetadata({
         title: `${song.title} by ${song.artists.join(", ")}`,
         description: `Shared from vault: ${share.vaultName} via VaultTune.`,
         openGraph: {
-            title: `Listening to ${song.title} by ${song.artists.join(", ")}`,
+            title: `${song.title} by ${song.artists.join(", ")}`,
             description: `Shared from vault: ${share.vaultName} via VaultTune.`,
         }
     };

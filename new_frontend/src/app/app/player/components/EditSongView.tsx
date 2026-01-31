@@ -63,7 +63,7 @@ export default function EditSongView({song, setSong}: {song: Song | undefined, s
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-            <div className="flex flex-col justify-start items-start">
+            <div className="flex flex-col justify-center lg:justify-start items-center lg:items-start">
                 <Input type="file" ref={newPictureRef} accept="image/*" className="hidden" onChange={(e) => {
                     console.log(e);
                     setNewPicture(e.currentTarget.files ? e.currentTarget.files[0] : null);

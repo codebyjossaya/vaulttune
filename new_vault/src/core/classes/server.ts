@@ -82,6 +82,8 @@ export default class Server {
                     if (sle.users.size === 0) {
                         this.sles.delete(sle.id);
                         this.logger.info(`SLE ${sle.id} deleted due to no users remaining.`);
+                        socket.emit("sles", Array.from(this.sles.values()).map(sle => sle.export()));
+
                     }
                 }
                 this.users = this.users.filter(user => user.id !== socket.id);
@@ -92,7 +94,7 @@ export default class Server {
             const playlists = this.database.getAllPlaylists();
             socket.emit("songs", songs, total);
             socket.emit("playlists", playlists);
-            socket.emit("sles", Array.from(this.sles.keys()));
+            socket.emit("sles", Array.from(this.sles.values()).map(sle => sle.export()));
 
             socket.on('get songs', async (offset: number) => {
                 this.logger.info(`Client ${socket.id} requested songs with offset ${offset}`);
@@ -114,6 +116,9 @@ export default class Server {
             // playlist events
             socket.on("create playlist", (name: string, song_ids: string[]) => {
                 handleCreatePlaylist(this, socket, name, song_ids)
+            });
+            socket.on("edit playlist", (name: string, song_ids: string[], playlist_id: string) => {
+                handleCreatePlaylist(this, socket, name, song_ids, playlist_id);
             });
         });
         this.logger.info("Connecting to database...");

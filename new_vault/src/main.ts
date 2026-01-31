@@ -159,6 +159,23 @@ server.io.on("connection", (socket) => {
         }
         rm(existingSong.path);
     });
+    socket.on('sle song seeked', (time) => {
+        const sle = server.sles.get(socket.data.sle || "");
+        const usr = sle.users.get(socket.id);
+        
+        if (!sle) {
+            socket.emit("error","SLE not active.");
+            return;
+        }
+        if (!usr) {
+            logger.error("User is not a member of SLE");
+            socket.emit("error", "User is not a member of SLE");
+            return;
+        }
+        sle.users.forEach((user) => {
+            user.emit("sle song seeked", socket.id, time);
+        })
+    })
 });
 // share feature
 server.database.db.prepare(`CREATE TABLE IF NOT EXISTS shared_songs (

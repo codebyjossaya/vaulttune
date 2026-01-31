@@ -2,14 +2,27 @@
 import { useRef, useState, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
 import { SocketContext } from "./SocketContext";
-import { Playlist, Song } from "../types";
+import { Playlist, SLE, Song } from "../types";
 
 export default function SocketProvider({ children }: { children: React.ReactNode }) {
     const socketRef = useRef<Socket>(null);
     const nameRef = useRef<string>("");
     const [songs, setSongs] = useState<Song[]>([]);
-    const [playlists, setPlaylists] = useState<[]>([]);
+    const [sles, setSl] = useState<SLE[]>([]);
+    const [activeSLE, setAS] = useState<SLE | undefined>(undefined)
+
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
     const [owner, setOwner] = useState<boolean>(false);
+    const SLESRef = useRef<SLE[]>(sles);
+    const activeSLERef = useRef<SLE>(undefined);
+    const setSles = (newSles: SLE[]) => {
+        SLESRef.current = newSles;
+        setSl(newSles);
+    }
+    const setActiveSLE = (sle: SLE | undefined) => {
+        setAS(sle);
+        activeSLERef.current = sle;
+    }
     const urlRef = useRef<string>("");
     const totalSongsRef = useRef<number>(0);
     const connect = (url: string, token: string) => {
@@ -37,6 +50,15 @@ export default function SocketProvider({ children }: { children: React.ReactNode
             socketRef.current.on("playlists", (data: []) => {
                 setPlaylists(data);
             });
+            socketRef.current.on("sles", (data: SLE[]) => {
+                setSles(data);
+            });
+            socketRef.current.on("sle changed", (sle: SLE) => {
+                console.log(sle);
+                const newSLES = sles.filter(s => s.id !== sle.id)
+                newSLES.push(sle);
+                setSles(newSLES);
+            })
             socketRef.current.on("owner", () => {
                 setOwner(true);
                 console.log("User is vault owner");
@@ -65,7 +87,17 @@ export default function SocketProvider({ children }: { children: React.ReactNode
     return (
         <SocketContext.Provider value={{
             socket: socketRef,
-            data: {owner, songs, totalSongs: totalSongsRef, setSongs, playlists, name: nameRef},
+            data: {
+                owner, 
+                songs, 
+                totalSongs: totalSongsRef, 
+                setSongs, 
+                playlists, 
+                name: nameRef, 
+                sles: SLESRef,
+                activeSLE: activeSLERef,
+                setActiveSLE,  
+            },
             connect,
             disconnect,
             url: urlRef,

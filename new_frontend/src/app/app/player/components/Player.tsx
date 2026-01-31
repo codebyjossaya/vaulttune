@@ -5,21 +5,22 @@ import Image from "next/image";
 import { Song } from "@/app/types";
 import { AudioPlayerButton, AudioPlayerDuration, AudioPlayerProgress, AudioPlayerProvider, AudioPlayerTime } from "@/components/ui/audio-player";
 import { Ellipsis, SkipBack, SkipForward, ListMusic, Share2Icon } from "lucide-react";
-import { ErrorContext } from "@/app/components/ErrorContext";
 import { StateContext } from "./StateProvider";
 import { AudioPlayerSpeed } from "@/components/ui/audio-player";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DropdownMenuContent } from "@radix-ui/react-dropdown-menu";
 import QueueView from "./QueueView";
 import ShareView from "./ShareView";
+import { AlertContext } from "@/components/AlertProvider";
+import { OverlayContext } from "@/components/OverlayProvider";
 
 export default function Player() {
     const socketCtx = useContext(SocketContext);
-    const errorCtx = useContext(ErrorContext);
+    const alertCtx = useContext(AlertContext);
     const stateCtx = useContext(StateContext);
+    const overlayCtx = useContext(OverlayContext);
 
-    const [queueOverlay, setQueueOverlay] = useState<boolean>(false);
-    const [shareOverlay, setShareOverlay] = useState<boolean>(false);
+    
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_, setForceUpdate] = useState<number>(0);
     const socket = socketCtx?.socket.current;
@@ -29,6 +30,7 @@ export default function Player() {
     const queueRef = useRef<{buffer: ArrayBuffer, chunk_counter: number}[]>([]);
     const chunkCounterRef = useRef<number>(0);
     const iosModeRef = useRef<boolean>(false);
+    const seekedRef = useRef<boolean>(false);
 
     const appendChunk = (chunk: {buffer: ArrayBuffer, chunk_counter: number}) => {
         if (queueRef.current.at(-1) && chunk.chunk_counter > queueRef.current!.at(-1)!.chunk_counter) {
@@ -65,7 +67,7 @@ export default function Player() {
         if (!audioRef.current) return;
         let retryIndicator = false;
         const errorListener = () => {
-            errorCtx?.setError("Audio playback error occurred.");
+            alertCtx?.setAlert("Audio playback error occurred.", "error");
             if (retryIndicator) return;
             retryIndicator = true;
             stateCtx?.play(stateCtx.currentSong!);
@@ -92,6 +94,7 @@ export default function Player() {
             }
         };
         
+        
         audioRef.current?.addEventListener('playing', playingListener);
         audioRef.current?.addEventListener('pause', stoppedListener);
         audioRef.current?.addEventListener('ended', stoppedListener);
@@ -112,6 +115,40 @@ export default function Player() {
         console.log("Song ended, advancing to next song in queue");
         if (stateCtx) stateCtx.queue.nextSong();
     }
+    useEffect(() => {
+        
+        const seekListener = () => {
+            const socket = socketCtx?.socket.current;
+            if (!socket) return;
+            console.log("Seeked to", audioRef.current!.currentTime);
+            if (seekedRef.current) {
+                console.log("Seeked event already handled, ignoring");
+                return; // prevent multiple seeks
+            }
+           socket.emit(`sle song seeked`, audioRef.current!.currentTime);
+        }
+        const playListener = () => {
+            const socket = socketCtx?.socket.current;
+            if (!socket) return;
+            socket.emit(`sle song played`);
+
+        }
+        audioRef.current?.addEventListener('seeked', seekListener);
+        const socket = socketCtx?.socket.current;
+        if (!socket) return;
+        socket.on(`sle song seeked`, (id: string, time: number) => {
+            if (audioRef.current && id !== socket.id) {
+                audioRef.current.removeEventListener('seeked', seekListener); // remove the event listener to prevent multiple seeks
+                audioRef.current.currentTime = time;
+                audioRef.current.addEventListener('seeked', seekListener); // re-add the event listener
+                console.log(`Received seek event to ${time} seconds`);
+                seekedRef.current = true; // prevent multiple seeks
+                setTimeout(() => {
+                    seekedRef.current = false; // reset after a short delay
+                }, 100); // adjust delay as needed
+            }
+        });
+    }, [socketCtx, socketCtx?.socket])
 
     useEffect(() => {
         setForceUpdate(prev => prev + 1);
@@ -121,12 +158,13 @@ export default function Player() {
         const currentSong = stateCtx?.currentSong;
         console.log("Setting up song data listeners for: ", currentSong ? currentSong.title : "no song");
         if (!currentSong) return;
+        socket?.removeAllListeners('song data start');
         
-        socket?.once("song data start", (song: Song, total_chunks) => {
+        socket?.once("song data start", (song: Song, total_chunks, data?: {id: string}) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const isIphone = /iPhone/.test(navigator.userAgent) && !(window as any).MSStream;
-            iosModeRef.current = isIphone;
-            console.log("iOS device?", isIphone);
+            const isIphone = /iPhone/.test(navigator.userAgent) && !(window as any).MSStream;    
+            const isFirefox = /Firefox/.test(navigator.userAgent);        
+            iosModeRef.current = isIphone || isFirefox;
             if (stateCtx && stateCtx.currentSong?.id !== song.id) {
                 console.log("Received song data start for a different song, ignoring");
                 return;
@@ -135,11 +173,19 @@ export default function Player() {
             stateCtx.player.setLoading(true);
             audioRef.current?.removeEventListener("ended", listen);
             console.log(song.mime)
-            if (song.mime.includes("m4a") || isIphone) {
+            if (song.mime.includes("m4a") || iosModeRef.current) {
                 console.log("m4a file detected or iOS mode, switching to iOS mode");
                 iosModeRef.current = true;
                 socket?.emit('song data ready', currentSong, true)
                 audioRef.current?.addEventListener("ended", listen);
+                if (stateCtx.persistedState.current) {
+                    console.log("Restoring persistent position..");
+                    stateCtx.persistedState.current = false;
+                    
+                    console.log(JSON.stringify(stateCtx.player));
+                    audioRef.current!.currentTime = stateCtx.player.currentTime.current;
+                    
+                }
                 return;
             }
             console.log("Preparing MediaSource for song playback");
@@ -178,10 +224,11 @@ export default function Player() {
                 socket?.emit('song data ready', currentSong)
                 if (stateCtx.persistedState.current) {
                     console.log("Restoring persistent position..");
+                    stateCtx.persistedState.current = false;
                     
                     console.log(JSON.stringify(stateCtx.player));
                     audioRef.current!.currentTime = stateCtx.player.currentTime.current;
-                    stateCtx.persistedState.current = false;
+                    
                 }
                 
                 
@@ -196,21 +243,22 @@ export default function Player() {
             
         });
 
-        socket?.on(`song data ${currentSong.id}`, (chunk: {buffer: ArrayBuffer, chunk_counter: number}) => {
-            navigator.mediaSession.setPositionState({
-                duration: audioRef.current?.duration || 0,
-                playbackRate: audioRef.current?.playbackRate || 1,
-                position: audioRef.current?.currentTime || 0
-            });
+        socket?.on(`song data ${currentSong.id}`, async (chunk: {buffer: ArrayBuffer, chunk_counter: number}) => {
+            
             if (iosModeRef.current) {
                 const blob = new Blob([chunk.buffer], {type: 'audio/m4a'});
                 const url = URL.createObjectURL(blob);
                 if (audioRef.current) {
                     audioRef.current.src = url;
-                    audioRef.current.play();
+                    await audioRef.current.play();
                 }
-                return;
             }
+            navigator.mediaSession.setPositionState({
+                duration: audioRef.current?.duration || 0,
+                playbackRate: audioRef.current?.playbackRate || 1,
+                position: audioRef.current?.currentTime || 0
+            });
+            if (iosModeRef.current) return;
             
             
             if (sourceBufferRef.current && !sourceBufferRef.current.updating) {
@@ -237,12 +285,7 @@ export default function Player() {
         const currentSong = stateCtx?.currentSong;
         if (socketCtx && currentSong) return (
             <div className="flex flex-col shrink gap-2 w-full py-2">
-                { queueOverlay && (
-                    <QueueView setOpen={setQueueOverlay} />
-                )}
-                { shareOverlay && (
-                    <ShareView exit={() => {setShareOverlay(false)}} song={currentSong}/>
-                )}
+                
                 {window.innerWidth > 768 ? (
                     <p className="md:self-center">Now Playing</p>
                 ): undefined}
@@ -291,13 +334,6 @@ export default function Player() {
                             
                         ) : null}
                         <AudioPlayerButton onClick={()=> {
-                            if (audioRef.current && isNaN(audioRef.current?.duration)) {
-                                console.log("Audio duration is NaN, restarting current song");
-                                const currentSong = stateCtx?.currentSong;
-                                stateCtx.setCurrentSong(undefined);
-                                console.log("Cleared current song");
-                                stateCtx?.play(currentSong!);
-                            }
                         }} className="border-0"></AudioPlayerButton>
                         {stateCtx && stateCtx.currentSong && stateCtx.queue.index.current !== null && stateCtx.queue.index.current < stateCtx.queue.songs.length - 1 ? (
                             <button className="border-0 p-2 hover:bg-white/10 rounded-lg" onClick={() => {
@@ -313,11 +349,17 @@ export default function Player() {
                         
                         {window.innerWidth >= 768 ? ( 
                             <>
-                                <AudioPlayerSpeed className="border-0" />
+                                <AudioPlayerSpeed className="border-0 p-0" />
                                 <button className="border-0 p-1 m-0" onClick={() => {
-                                    setShareOverlay(true);
-                                }}><Share2Icon /></button>
-                                { stateCtx.queue.songs.length > 0 && <ListMusic className="border-0 hover:bg-white hover:text-black hover:cursor-pointer" onClick={() => {setQueueOverlay(!queueOverlay)}} /> }
+                                    overlayCtx.setOverlay({
+                                        title: "Share",
+                                        content: <ShareView song={currentSong} />,
+                                    })
+                                }}><Share2Icon className="size-4" /></button>
+                                { stateCtx.queue.songs.length > 0 && <ListMusic className="border-0 hover:bg-white hover:text-black hover:cursor-pointer" onClick={() => overlayCtx.setOverlay({
+                                    title: "Queue",
+                                    content: <QueueView />,
+                                })} /> }
                             </> 
                         ) : (
                             <DropdownMenu onClick={(e) => e.stopPropagation()}>
@@ -325,17 +367,23 @@ export default function Player() {
                                     <Ellipsis />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent side="top" className="bg-gray-800 flex flex-row rounded-lg w-fit text-white">
-                                    <DropdownMenuItem className="max-w-1/2 hover:bg-transparent">
+                                    <DropdownMenuItem className="max-w-1/2 hover:bg-transparent p-0">
                                         <AudioPlayerSpeed onClick={(e) => {e.stopPropagation()}} style={{color: 'white'}} className="border-0" />
                                     </DropdownMenuItem>
                                      { stateCtx.queue.songs.length > 0 && <DropdownMenuItem onClick={() => {
-                                            setQueueOverlay(true)
+                                            overlayCtx.setOverlay({
+                                                title: "Queue",
+                                                content: <QueueView />,
+                                            })
                                             }}>
                                        <ListMusic className="border-0 text-white"  /> 
                                     </DropdownMenuItem> }
                                     <DropdownMenuItem asChild>
                                         <button className="border-0 p-1 m-0 hover:text-black" onClick={() => {
-                                            setShareOverlay(true);
+                                            overlayCtx.setOverlay({
+                                                title: "Share",
+                                                content: <ShareView song={currentSong} />,
+                                            })
                                         }}><Share2Icon className="text-white hover:text-black" /></button>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>

@@ -1,14 +1,15 @@
-import ErrorProvider from "@/app/components/ErrorProvider";
 import SocketProvider from "@/app/components/SocketProvider";
 import { StateProvider } from "./components/StateProvider";
+import OverlayProvider from "@/components/OverlayProvider";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     return (
         <SocketProvider>
             <StateProvider>
-                <ErrorProvider>
-                        {children}
-                </ErrorProvider>
+
+                <OverlayProvider>
+                    {children}
+                </OverlayProvider>
             </StateProvider>
         </SocketProvider>
         

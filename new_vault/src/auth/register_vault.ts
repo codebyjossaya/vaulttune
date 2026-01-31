@@ -6,6 +6,7 @@ export function registerVault(config: VaultOptions, status: "online" | "offline"
             reject(new Error("Request timed out while registering vault."));
         }, 10000); // 10 seconds timeout
     });
+    console.log("config", config)
     return Promise.race([timeout, new Promise<void>((resolve, reject) => {
         try {
             console.log(`Registering vault with status: ${status}`);

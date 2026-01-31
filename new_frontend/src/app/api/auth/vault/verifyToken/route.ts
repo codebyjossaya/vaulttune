@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import verifyServer from "@/lib/tokens/verify"
+import { database } from "@/lib/firebase/admin";
 export async function POST(req: NextRequest) {
     console.log(`Request to authenticate Vault token received`)
     try {
@@ -12,6 +13,12 @@ export async function POST(req: NextRequest) {
         const vault_token_data = verifyServer(vault_token);
         // Verify the vault token
         console.log(`Verification of Vault ${vault_token_data.id}'s token was successful!`);
+        console.log(`Checking token status...`);
+        const vaultData = database.ref(`/vaults/${vault_token_data.id}`);
+        const vaultSnapshot = await vaultData.once('value');
+        if (!vaultSnapshot.exists()) {
+            throw new Error("Token may be revoked");
+        }
         return new Response(JSON.stringify({status: "success", id: vault_token_data.id, user: vault_token_data.user}), { status: 200 });
         
     } catch (error: unknown) {

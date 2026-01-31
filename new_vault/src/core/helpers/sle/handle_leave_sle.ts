@@ -10,8 +10,8 @@ export default function handleLeaveSLE(server: Server, socket: ConnectedUser) {
             server.logger.info(`SLE ${sle.id} deleted due to no users remaining.`);
         }
         socket.data.sle = null;
-        socket.emit("sle left");
-        socket.emit("sles", Array.from(server.sles.keys()));
+        server.io.emit("sle changed", sle.export());
+        socket.emit("sles", Array.from(server.sles.values()).map(sle => sle.export()));
     } else {
         socket.emit("error", `You are not in a SLE.`);
         server.logger.warn(`User ${socket.id} attempted to leave a SLE but was not in one.`);

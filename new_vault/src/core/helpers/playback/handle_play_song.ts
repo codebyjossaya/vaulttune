@@ -23,18 +23,21 @@ export default async function handlePlaySong(server: Server, socket: ConnectedUs
         let timeoutId: NodeJS.Timeout | null = null;
         console.log(`Song: ${song.title} by ${song.artists.join(", ")} with a chunk size of ${chunkSize} and bytelength of ${buf.byteLength} making ${total_chunks} total chunks`);
         if (sle) {
+            server.logger.info(`Broadcasting to SLE ${sle.id} members`);
             sle.currentSong = song;
             sle.isPlaying = true;
             sle.timestamp = 0;
             sle.users.forEach(user => {
                 if (user.id === socket.id) return; // skip sender
+                server.logger.info(`Emitting song data start to user ${user.id}`);
+                user.emit('sle play', song);
                 user.emit("song data start", 
                             song, 
                             total_chunks, 
                             { 
                             id: socket.id
-                        });
-            
+                            }
+                        );            
             });
         }
 

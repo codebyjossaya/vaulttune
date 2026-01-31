@@ -31,19 +31,17 @@ export async function POST(req: NextRequest) {
             // check if vault is already registered globally
             if (!vaultSnapshot.exists()) {
                 // if not, create a new vault entry
-                console.log(`Performing first-time Vault registration`)
-                const users: string[] = [server_token.user.uid];
-                vaultRef.set({ vault_name, tunnel_url, users, id: server_token.id, status });
-            } else {
-                console.log(`Vault is already registered...updating Vault accordingly`)
-                // if it exists, update the vault entry with the new tunnel URL and add the user if not already present
-                const existingData = vaultSnapshot.val();
-                const usersList: string[] = Array.isArray(existingData.users) ? existingData.users : [];
-                if (!usersList.includes(server_token.user.uid)) {
-                    usersList.push(server_token.user.uid);
+                throw new Error("Token may be revoked");
+            }
+            console.log(`Registering vault...`)
+            // if it exists, update the vault entry with the new tunnel URL and add the user if not already present
+            const existingData = vaultSnapshot.val();
+            const usersList: string[] = Array.isArray(existingData.users) ? existingData.users : [];
+            if (!usersList.includes(server_token.user.uid)) {
+                usersList.push(server_token.user.uid);
+                
             }
             vaultRef.update({ tunnel_url, users: usersList, vault_name, status });
-        }
         // Respond with success
         console.log("Vault registration was successful!")
         return new Response(JSON.stringify({status: "success",message: "Vault registered successfully"}));

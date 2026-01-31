@@ -6,6 +6,9 @@ export default function handleCreateSLE(server: Server, socket: ConnectedUser) {
     server.sles.set(sle_id, newSLE);
     newSLE.users.set(socket.id, socket);
     socket.data.sle = sle_id;
-    socket.emit("sle created", newSLE);
+    const val = Array.from(server.sles.values()).map(sle => sle.export());
+    server.io.emit("sles", val);
+    socket.emit("sle created", newSLE.export());
+
     server.logger.info(`SLE ${sle_id} created by ${socket.id}`);
 }

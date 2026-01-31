@@ -71,4 +71,17 @@ export class SLE { // shared listening experience
         this.isPlaying = false;
         this.timestamp = 0;
     }
+    export() {
+        const sockets = Array.from(this.users.values());
+        const users = sockets.map(socket => {
+            return {
+                id: socket.id,
+                auth: socket.data.auth,
+            }
+        })
+        return {
+            ...this,
+            users
+        };
+    }
 }

@@ -1,7 +1,7 @@
 'use client';
 import { SocketContext } from "@/app/components/SocketContext";
 import { useParams } from "next/navigation";
-import { useState, useContext, useEffect, useRef } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Player from "../components/Player";
 import { auth } from "@/lib/firebase/main";
@@ -17,18 +17,20 @@ import { DialogTrigger } from "@radix-ui/react-dialog";
 import { StateContext } from "../components/StateProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import UploadSongs from "../components/UploadSongs";
-
+import SLEView from "../components/SLEView";
+import { Song } from "@/app/types";
+import { AlertContext } from "@/components/AlertProvider";
+import { OverlayContext } from "@/components/OverlayProvider";
 export default function Page() {
     
     const socketCtx = useContext(SocketContext);
     const stateCtx = useContext(StateContext);
+    const overlayCtx = useContext(OverlayContext)
     const params = useParams();
     const { vault_id } = params as { vault_id: string };
     if (stateCtx) stateCtx.vault_id!.current = vault_id;
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [page, setPage] = useState<"Songs" | "Playlists">("Songs");
-    const [createPlaylistOverlay, setCreatePlaylistOverlay] = useState<boolean>(false);
-    const [uploadSongsOverlay, setUploadSongsOverlay] = useState<boolean>(false);
     const [offset, setOffset] = useState<number>(0);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).stateCtx = stateCtx;
@@ -44,38 +46,56 @@ export default function Page() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socketCtx?.data.songs]);
+
+    useEffect(() => {
+        if (!socketCtx?.socket.current) return;
+        socketCtx?.socket.current!.on("sle play", (song: Song) => {
+            stateCtx?.setCurrentSong(undefined);
+            stateCtx?.setCurrentSong(song);
+            
+        });
+        return () => {
+            if (!socketCtx?.socket.current) return;
+            socketCtx?.socket.current!.removeAllListeners("sle play");
+        }
+    }, [socketCtx?.socket, stateCtx]);
         
     return socketCtx && (
             
             <div className="absolute h-screen w-screen top-0 flex justify-items-start"
                 style={{height: window.innerHeight}}  
             >
-                {
-                    createPlaylistOverlay && 
-                    <div className={`${createPlaylistOverlay ? "fixed fade-in flex top-0 left-0 h-screen w-screen bg-black/30 items-center justify-center z-1000" : "hidden"}`}>
-                        <CreatePlaylist exit={() => {setCreatePlaylistOverlay(false)}} />
-                    </div>
-                }
-                {
-                    uploadSongsOverlay && <UploadSongs exit={() => {setUploadSongsOverlay(false)}} />
-                }
                 <div className="fade-in absolute right-0 w-screen h-full max-h-full md:relative md:w-[50%] sm:h-screen flex flex-col bg-black/30 rounded-lg p-5 justify-items-center">
                     <h1>{socketCtx?.data.name.current}</h1>
                     <div className="h-1 w-full bg-white/30"></div>
                     <div className="flex">
-                        <Dialog onOpenChange={setCreatePlaylistOverlay}>
+                        <Dialog onOpenChange={() => {}}>
                             <DropdownMenu onClick={() => {}}>
                                 <DropdownMenuTrigger className="bg-transparent p-2 my-2 rounded-lgborder border-white hover:bg-black hover:border-black hover:text-white hover:cursor-pointer">
                                     <div><Plus /></div>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent>
+                                <DropdownMenuContent className="relative z-10001">
                                     <DialogTrigger asChild>
-                                        <DropdownMenuItem onClick={() => setCreatePlaylistOverlay(true)}>
+                                        <DropdownMenuItem onClick={() => {
+                                            overlayCtx.setOverlay({
+                                                title: "Create Playlist",
+                                                content: <CreatePlaylist />,
+                                            });                                        
+                                        }}>
                                             Create playlist
                                         </DropdownMenuItem>
                                     </DialogTrigger>
-                                    <DropdownMenuItem onClick={() => setUploadSongsOverlay(true)}>
+                                    <DropdownMenuItem onClick={() => overlayCtx.setOverlay({
+                                        title: "Upload Songs",
+                                        content: <UploadSongs />,
+                                    })}>
                                         Upload songs
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => overlayCtx.setOverlay({
+                                        title: "Shared Listening Experiences",
+                                        content: <SLEView />,
+                                    })}>
+                                        Shared Listening Experiences
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -83,9 +103,9 @@ export default function Page() {
                         </Dialog>
                         
                     </div>
-                    <div className="scrollbar bg-gray rounded-lg mx-auto bottom-0 w-full h-full overflow-y-auto bg-black/50 flex flex-col gap-4">
-                        <div className="sticky top-0 w-full p-2 m-0 bg-black flex flex-col justify-center gap-4">
-                            <div className="  flex justify-center gap-4">
+                    <div className="scrollbar bg-gray rounded-lg mx-auto bottom-0 w-full h-full overflow-y-auto bg-black/50 flex flex-col gap-4 ">
+                        <div className="relative sticky top-0 w-full p-2 m-0 bg-black flex flex-col justify-center gap-4 z-1000">
+                            <div className="flex justify-center gap-4">
                                 <button className={`${page === "Songs" ? "font-bold bg-amber-100 text-black" : ""}`} onClick={() => setPage("Songs")}>Songs</button>
                                 <button className={`${page === "Playlists" ? "font-bold bg-amber-100 text-black" : ""}`} onClick={() => setPage("Playlists")}>Playlists</button>
                             </div>
@@ -93,7 +113,7 @@ export default function Page() {
                                 setSearchTerm(e.currentTarget.value);
                             }}></input>
                         </div>
-                        <div className="flex flex-col p-4 gap-4">
+                        <div className="flex flex-col p-4 gap-4 relative">
                             { page === "Songs" ? 
                             <>
                                 <Songs searchTerm={searchTerm}/>

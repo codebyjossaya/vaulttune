@@ -1,4 +1,3 @@
-import DisplayMode from "@/app/components/DisplayMode";
 import { Song } from "@/app/types";
 import { useContext, useEffect, useRef, useState } from "react";
 import { Stage, Layer, Rect, Text, Image } from "react-konva"
@@ -9,22 +8,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Stage as stg } from "konva/lib/Stage";
 import { SocketContext } from "@/app/components/SocketContext";
 import { Text as txt} from "konva/lib/shapes/Text";
-import Loading from "./Loading";
-export default function ShareView({exit, song}: {exit?: () => void, song?: Song}) {
+import Loading from "../../../../components/Loading";
+import { OverlayContext } from "@/components/OverlayProvider";
+import { AlertContext } from "@/components/AlertProvider";
+export default function ShareView({song}: {song?: Song}) {
     const [color, setColor] = useState<string | undefined>(undefined);
     const [dark, setDark] = useState<boolean>(true);
-    const [link, setLink] = useState<string | null>(null);
+    const [copied, setCopied] = useState<boolean>(true);
     const [loading, setLoading] = useState<boolean>(false);
     const [y, setY] = useState<number>(560.8);
+    const [img, setImg] = useState<HTMLImageElement | null>(null);
     const stageRef = useRef<stg>(null);
     const socketCtx = useContext(SocketContext)
-    const img = new window.Image()
-    
-    img.src = `${socketCtx?.url.current}/photo/${song?.id}?socketId=${socketCtx?.socket?.current?.id}` || '/placeholder.jpg'
-    img.crossOrigin = "anonymous";
+    const overlayCtx = useContext(OverlayContext);
+    const alertCtx = useContext(AlertContext)
     const baseY = 560.8;
     
-
     const textRef = useRef<txt>(null);
     
     const handleTextRef = (node: txt) => {
@@ -47,9 +46,24 @@ export default function ShareView({exit, song}: {exit?: () => void, song?: Song}
 
 
     useEffect(() => {
+        if (!socketCtx?.url.current) {
+            console.log("Socket URL not available yet.");
+            return;
+        }
+        console.log("Fetching cover image for song:", song?.title);
         const blob = fetch(`${socketCtx?.url.current}/photo/${song?.id}?socketId=${socketCtx?.socket?.current?.id}`).then(res => res.blob());
         const fac = new FastAverageColor();
-        const color = blob.then((blob) => fac.getColorAsync(URL.createObjectURL(blob)));
+        const color = blob.then((blob) => {
+            const img = new window.Image();
+            if (blob && blob.type.includes('image')) {
+                img.src = URL.createObjectURL(blob);
+            } else {
+                img.src = '/placeholder.jpg';
+            }
+            setImg(img);
+            return fac.getColorAsync(img.src)
+            
+        });
         color.then((color) => {
             setColor(color.hex);
             setDark(color.isDark);
@@ -58,11 +72,12 @@ export default function ShareView({exit, song}: {exit?: () => void, song?: Song}
             setColor('#000000');
             setDark(true);
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [socketCtx, socketCtx?.url, song]);
+
+
         
-    return color ? (
-        <DisplayMode className="h-fit mt-0 items-center" title="Share" setOpen={exit ? exit : () => {}}>
+    return color && img ? (
+        <>
             { !loading ? (<>
                 {
                 window.innerWidth > 768 && 
@@ -134,7 +149,7 @@ export default function ShareView({exit, song}: {exit?: () => void, song?: Song}
                     </Layer>
                 </Stage>
             <div className="flex flex-row gap-2 w-full justify-center mt-4">
-                { link ? <p>{link}</p> : <Tooltip>
+                <Tooltip>
                     <TooltipTrigger asChild>
                         <button onClick={async () => {
                             if (!socketCtx) return;
@@ -142,21 +157,23 @@ export default function ShareView({exit, song}: {exit?: () => void, song?: Song}
                             socketCtx?.socket.current?.emit('share song', song);
                             socketCtx?.socket.current?.once('share created', (shareId: string) => {
                                 console.log("Share ID received: ", shareId);
-                                setLink(`${window.location.origin}/share/${shareId}`);
+                                const link = `${window.location.origin}/share/${shareId}`;
+                                navigator.clipboard.writeText(link);
                                 setLoading(false);
+                                setCopied(true)
                                 
                             });
                             socketCtx.socket.current?.once('error', (error: string) => {
                                 console.error("Error creating share link: ", error);
                                 setLoading(false);
-                                if (exit) exit()
+                                overlayCtx.clearOverlay();
                             });
                         }}><Copy /></button>
                     </TooltipTrigger>
                     <TooltipContent>
                         <p>Copy public link</p>
                     </TooltipContent>
-                </Tooltip>}
+                </Tooltip>
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button onClick={() => {
@@ -178,6 +195,6 @@ export default function ShareView({exit, song}: {exit?: () => void, song?: Song}
             </div>   
             </>
             ) : <Spinner className="size-24" /> }
-        </DisplayMode>
+        </>
     ) : <Loading message="Loading..." />;
 }

@@ -5,7 +5,7 @@ export default function handleJoinSLE(server: Server, socket: ConnectedUser, sle
     if (sle) {
         sle.users.set(socket.id, socket);
         socket.data.sle = sle_id;
-        socket.emit("sle joined", sle);
+        server.io.emit("sle changed", sle.export());
         server.logger.info(`User ${socket.id} joined SLE ${sle_id}`);
     } else {
         socket.emit("error", `SLE ${sle_id} not found.`);
