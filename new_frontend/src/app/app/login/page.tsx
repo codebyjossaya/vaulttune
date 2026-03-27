@@ -11,10 +11,11 @@ export default function Login() {
     const redirectPath = params.get('redirect') || '/app/dashboard';
     return (
         <div className="absolute w-screen h-screen flex items-center justify-center">
-            <div className="bg-gray-950/30 rounded-lg flex flex-col justify-center text-center w-screen h-screen lg:h-96 lg:w-96 p-20 gap-4">
+            <div className={"fixed inset-0 pointer-events-none z-0 bg-violet-900 mask-[url(/vaulttune-foreground.svg)] mask-repeat-no-repeat mask-size-cover opacity-40"} />
+            <div className="z-1 bg-zinc-950/30 rounded-lg flex flex-col justify-center text-center w-screen h-screen lg:h-96 lg:w-96 p-20 gap-4">
             <div>
-                <h1>VaultTune</h1>
-                <div className="h-0.5 w-full my-2 hidden lg:visible bg-gray-400"></div>
+                <h1>Welcome to VaultTune</h1>
+                <div className="h-0.75 w-full my-2 hidden lg:visible bg-gray-400"></div>
                 <h2>Sign into VaultTune</h2>
             </div>
                 <div className="">
